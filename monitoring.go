@@ -34,6 +34,7 @@ type FSM struct {
 
 func (fsm *FSM) Apply(l *raft.Log) interface{} {
 	log.Printf("Got log %+v", l)
+	log.Printf("%v", string(l.Data))
 	return fsm.store.ExecCommand(l.Data)
 }
 
@@ -198,11 +199,9 @@ func (r *Raft) ExecCommand(msg []byte) error {
 //	return future.Error()
 //}
 
-// SyncAll Ensures that all raft nodes are up to date with the latest state for
-// their FSM
-func (r *Raft) SyncAll() error {
-	future := r.raft.Barrier(0)
-	return future.Error()
+// Sync the FSM
+func (r *Raft) Sync() error {
+	return r.raft.Barrier(0).Error()
 }
 
 // LeaderCh just wraps the raft LeaderCh call

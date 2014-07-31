@@ -27,6 +27,9 @@ func checksHandler(ra *monitoring.Raft) func(http.ResponseWriter, *http.Request)
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case "GET":
+			if err := ra.Sync(); err != nil {
+				panic(err)
+			}
 			res := map[string][]*monitoring.Check{
 				"checks": []*monitoring.Check{},
 			}
@@ -57,6 +60,9 @@ func checkHandler(ra *monitoring.Raft) func(http.ResponseWriter, *http.Request) 
 		vars := mux.Vars(r)
 		switch r.Method {
 		case "GET":
+			if err := ra.Sync(); err != nil {
+				panic(err)
+			}
 			check, exists := ra.Store.ChecksIndex[vars["id"]]
 			if exists {
 				WriteJSON(w, check)
@@ -64,7 +70,13 @@ func checkHandler(ra *monitoring.Raft) func(http.ResponseWriter, *http.Request) 
 				http.Error(w, http.StatusText(404), 404)
 			}
 		case "DELETE":
-
+			id := []byte(vars["id"])
+			msg := make([]byte, len(id)+1)
+			msg[0] = 1
+			copy(msg[1:], id)
+			if err := ra.ExecCommand(msg); err != nil {
+				panic(err)
+			}
 		default:
 			w.WriteHeader(http.StatusMethodNotAllowed)
 		}

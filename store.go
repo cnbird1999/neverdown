@@ -76,6 +76,10 @@ func (s *Store) ExecCommand(data []byte) error {
 			return err
 		}
 		s.ChecksIndex[check.ID] = check
+	case 1:
+		checkID := string(data[1:])
+		fmt.Printf("delete %v", checkID)
+		delete(s.ChecksIndex, checkID)
 	default:
 		panic("unknow cmd type")
 	}
@@ -87,6 +91,7 @@ type Check struct {
 	ID string `json:"id"`
 	URL string `json:"created_at"`
 	LastCheck int64 `json:"created_at"`
+	Up bool `json:"up"`
 	LastDown int64 `json:"last_down"`
 	Interval int `json:"interval"`
 	WebHooks []string `json:"webhooks"`
@@ -94,9 +99,7 @@ type Check struct {
 
 // NewCheck initialize an empty Check, generates an ID.
 func NewCheck() *Check {
-	return &Check{
-		ID: uuid(),
-	}
+	return &Check{}
 }
 
 // WebHook represent a waiting webhook notification
@@ -107,7 +110,5 @@ type WebHook struct {
 
 // NewWebHook initialize an empty WebHook, generates an ID;
 func NewWebHook() *WebHook {
-	return &WebHook{
-		ID: uuid(),
-	}
+	return &WebHook{}
 }
