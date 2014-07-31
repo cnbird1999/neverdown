@@ -29,11 +29,12 @@ const (
 
 // FSM wraps the Storage instance in the raft.FSM interface, allowing raft to apply commands.
 type FSM struct {
+	store *Store
 }
 
 func (fsm *FSM) Apply(l *raft.Log) interface{} {
 	log.Printf("Got log %+v", l)
-	return nil
+	return fsm.store.ExecCommand(l.Data)
 }
 
 // Snapshot creates a raft snapshot for fast restore.
@@ -69,6 +70,7 @@ func (s *Snapshot) Release() {
 
 // Raft encapsulates the raft specific logic for startup and shutdown.
 type Raft struct {
+	Store *Store
 	transport *raft.NetworkTransport
 	mdb       *raftmdb.MDBStore
 	raft      *raft.Raft
@@ -138,7 +140,10 @@ func NewRaft(prefix, addr string) (r *Raft, err error) {
 		panic(fmt.Errorf("Could not create raft store:", err))
 		return
 	}
-	r.fsm = &FSM{}
+	r.Store = NewStore()
+	r.fsm = &FSM{
+		store: r.Store,
+	}
 
 	r.raft, err = raft.NewRaft(config, r.fsm, r.mdb, r.mdb, fss, peerStore, r.transport)
 	if err != nil {
@@ -160,8 +165,8 @@ func (r *Raft) Close() {
 	//r.fsm.store.Close()
 }
 
-func (r *Raft) SetData(val string) error {
-	future := r.raft.Apply([]byte(val), 30*time.Second)
+func (r *Raft) ExecCommand(msg []byte) error {
+	future := r.raft.Apply(msg, 30*time.Second)
 	return future.Error()
 }
 

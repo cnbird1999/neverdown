@@ -69,14 +69,13 @@ func (s *Store) FromJSON(js []byte) error {
 // ExecCommand decode a Raft log entry (cmdType byte + JSON encoded payload)
 func (s *Store) ExecCommand(data []byte) error {
 	cmdType := data[0]
-	var out interface{}
-	if err := json.Unmarshal(data[1:], &out); err != nil {
-		return err
-	}
 	switch cmdType {
 	case 0:
-		check := out.(Check)
-		fmt.Printf("%+v\n", check)
+		check := NewCheck()
+		if err := json.Unmarshal(data[1:], check); err != nil {
+			return err
+		}
+		s.ChecksIndex[check.ID] = check
 	default:
 		panic("unknow cmd type")
 	}
