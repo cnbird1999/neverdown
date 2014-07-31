@@ -7,16 +7,16 @@ import (
 )
 
 type Scheduler struct {
-	store *Store
+	raft *Raft
 	stop    chan struct{}
 	Reloadch chan struct{}
 	running bool
 	checks    []*Check
 }
 
-func NewScheduler(store *Store) *Scheduler {
+func NewScheduler(raft *Raft) *Scheduler {
 	return &Scheduler{
-		store: store,
+		raft: raft,
 		stop: make(chan struct{}),
 		Reloadch: make(chan struct{}),
 	}
@@ -33,7 +33,7 @@ func (d *Scheduler) Reload() {
 
 func (d *Scheduler) updateChecks() error {
 	d.checks = []*Check{}
-	for _, check := range d.store.ChecksIndex {
+	for _, check := range d.raft.Store.ChecksIndex {
 		d.checks = append(d.checks, check)
 	}
 	return nil
@@ -64,8 +64,10 @@ func (d *Scheduler) Run() {
 				if now.Sub(check.Next) < 0 {
 					break
 				}
-				go check.Run()
 				check.Prev = check.Next
+				go LeaderCheck(d.raft, check)
+				d.raft.ExecCommand(check.ToPostCmd())
+				check.LastCheck = check.Next.Unix()
 				check.ComputeNext(now)
 				continue
 			}

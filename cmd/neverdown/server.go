@@ -12,6 +12,7 @@ import (
 	"github.com/tsileo/monitoring"
 )
 
+var RaftWarmUpTime = 5*time.Second
 
 func WriteJSON(w http.ResponseWriter, data interface{}) {
 	js, err := json.Marshal(data)
@@ -89,19 +90,20 @@ func clusterHandler(reload chan<- struct{}, ra *monitoring.Raft) func(http.Respo
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case "GET":
-			peers := []string{}
-			addrs, err := ra.Peers()
-			if err != nil {
-				panic(err)
-			}
 			leaderAddr := monitoring.ResolveAPIAddr(ra.Leader())
-			for _, addr := range addrs {
-				apiAddr := monitoring.ResolveAPIAddr(addr)
-				if apiAddr != leaderAddr {
-					peers = append(peers, apiAddr)
-				}
-			}
+			peers := ra.PeersAPI()
 			WriteJSON(w, map[string]interface{}{"peers":peers, "leader": leaderAddr})
+		default:
+			w.WriteHeader(http.StatusMethodNotAllowed)
+		}
+	}
+}
+
+func pingHandler(ra *monitoring.Raft) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case "GET":
+			WriteJSON(w, monitoring.PerformCheck(r.FormValue("url")))
 		default:
 			w.WriteHeader(http.StatusMethodNotAllowed)
 		}
@@ -113,7 +115,7 @@ func main() {
 	r, err := monitoring.NewRaft(os.Getenv("UPCHECK_PREFIX"), os.Getenv("UPCHECK_ADDR"))
 	log.Printf("%+v/%v", r, err)
 	defer r.Close()
-	sched := monitoring.NewScheduler(r.Store)
+	sched := monitoring.NewScheduler(r)
 	go func() {
 		for isLeader := range r.LeaderCh() {
 			log.Printf("Leader change %v", isLeader)
@@ -127,12 +129,15 @@ func main() {
 			}
 		}
 	}()
+	go func() {
+		<-time.After(RaftWarmUpTime)
+		sched.Reloadch<- struct{}{}
+	}()
 	r2 := mux.NewRouter()
-	r2.HandleFunc("/check", checksHandler(sched.Reloadch, r))
-
 	r2.HandleFunc("/_cluster", clusterHandler(sched.Reloadch, r))
+	r2.HandleFunc("/_ping", pingHandler(r))
+	r2.HandleFunc("/check", checksHandler(sched.Reloadch, r))
 	r2.HandleFunc("/check/{id}", checkHandler(sched.Reloadch, r))
-	http.Handle("/public/", http.StripPrefix("/public", http.FileServer(http.Dir("public"))))
 	http.Handle("/", r2)
 	http.ListenAndServe(os.Getenv("UPCHECK_HTTP"), nil)
 	for {

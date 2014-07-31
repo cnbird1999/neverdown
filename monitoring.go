@@ -170,6 +170,18 @@ func ResolveAPIAddr(addr net.Addr) string {
 func (r *Raft) Peers() ([]net.Addr, error) {
 	return r.peerStore.Peers()
 }
+func (r *Raft) PeersAPI() ([]string) {
+	peers := []string{}
+	leaderAddr := ResolveAPIAddr(r.Leader())
+	addrs, _ := r.Peers()
+	for _, addr := range addrs {
+		apiAddr := ResolveAPIAddr(addr)
+		if apiAddr != leaderAddr {
+			peers = append(peers, apiAddr)
+		}
+	}
+	return peers
+}
 
 func (r *Raft) Leader() net.Addr {
 	return r.raft.Leader()

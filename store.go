@@ -2,7 +2,6 @@ package monitoring
 
 import (
 	"fmt"
-	"log"
 	"crypto/rand"
 	"encoding/json"
 	"sync"
@@ -91,8 +90,8 @@ func (s *Store) ExecCommand(data []byte) error {
 // Check represent an active monitoring check
 type Check struct {
 	ID string `json:"id"`
-	URL string `json:"created_at"`
-	LastCheck int64 `json:"created_at"`
+	URL string `json:"url"`
+	LastCheck int64 `json:"last_check"`
 	Up bool `json:"up"`
 	LastDown int64 `json:"last_down"`
 	Interval int `json:"interval"`
@@ -122,9 +121,15 @@ func (c *Check) ComputeNext(now time.Time) {
 	return
 }
 
-func (c *Check) Run() {
-	log.Printf("Hey, looks I'm running: %+v", c)
-	return
+func (c *Check) ToPostCmd() []byte {
+	js, err := json.Marshal(c)
+	if err != nil {
+		panic(err)
+	}
+	msg := make([]byte, len(js)+1)
+	msg[0] = 0
+	copy(msg[1:], js)
+	return msg
 }
 
 type byTime []*Check

@@ -1,6 +1,6 @@
-# Monitoring
+# Nerverdown
 
-Distributed website monitoring system that triggers webhooks when a website is down.
+Distributed website monitoring system that triggers webhooks when a website status change.
 
 ## Features
 
