@@ -18,9 +18,12 @@ Distributed website monitoring system that triggers webhooks when a website stat
 
 ### DELETE /check/{id}
 
-## Limitations
+## TODO
 
-
+- Hawk authentication for the HTTP API
+- A better ``PingResponse``
+- Leader redirection for the HTTP API
+- Implements WebHooks
 
 ## License
 
