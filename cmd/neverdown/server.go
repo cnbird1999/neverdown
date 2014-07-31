@@ -23,7 +23,7 @@ func WriteJSON(w http.ResponseWriter, data interface{}) {
 	w.Write(js)
 }
 
-func checksHandler(ra *monitoring.Raft) func(http.ResponseWriter, *http.Request) {
+func checksHandler(reload chan<- struct{}, ra *monitoring.Raft) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case "GET":
@@ -49,13 +49,14 @@ func checksHandler(ra *monitoring.Raft) func(http.ResponseWriter, *http.Request)
 			if err := ra.ExecCommand(msg); err != nil {
 				panic(err)
 			}
+			reload<- struct{}{}
 		default:
 			w.WriteHeader(http.StatusMethodNotAllowed)
 		}
 	}
 }
 
-func checkHandler(ra *monitoring.Raft) func(http.ResponseWriter, *http.Request) {
+func checkHandler(reload chan<- struct{}, ra *monitoring.Raft) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		switch r.Method {
@@ -77,6 +78,30 @@ func checkHandler(ra *monitoring.Raft) func(http.ResponseWriter, *http.Request) 
 			if err := ra.ExecCommand(msg); err != nil {
 				panic(err)
 			}
+			reload<- struct{}{}
+		default:
+			w.WriteHeader(http.StatusMethodNotAllowed)
+		}
+	}
+}
+
+func clusterHandler(reload chan<- struct{}, ra *monitoring.Raft) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case "GET":
+			peers := []string{}
+			addrs, err := ra.Peers()
+			if err != nil {
+				panic(err)
+			}
+			leaderAddr := monitoring.ResolveAPIAddr(ra.Leader())
+			for _, addr := range addrs {
+				apiAddr := monitoring.ResolveAPIAddr(addr)
+				if apiAddr != leaderAddr {
+					peers = append(peers, apiAddr)
+				}
+			}
+			WriteJSON(w, map[string]interface{}{"peers":peers, "leader": leaderAddr})
 		default:
 			w.WriteHeader(http.StatusMethodNotAllowed)
 		}
@@ -84,12 +109,29 @@ func checkHandler(ra *monitoring.Raft) func(http.ResponseWriter, *http.Request) 
 }
 
 func main() {
+	var leader bool
 	r, err := monitoring.NewRaft(os.Getenv("UPCHECK_PREFIX"), os.Getenv("UPCHECK_ADDR"))
 	log.Printf("%+v/%v", r, err)
 	defer r.Close()
+	sched := monitoring.NewScheduler(r.Store)
+	go func() {
+		for isLeader := range r.LeaderCh() {
+			log.Printf("Leader change %v", isLeader)
+			leader = isLeader
+			if leader {
+				go sched.Run()
+				log.Printf("Starting scheduler")
+			} else {
+				sched.Stop()
+				log.Printf("Stopping scheduler")
+			}
+		}
+	}()
 	r2 := mux.NewRouter()
-	r2.HandleFunc("/check", checksHandler(r))
-	r2.HandleFunc("/check/{id}", checkHandler(r))
+	r2.HandleFunc("/check", checksHandler(sched.Reloadch, r))
+
+	r2.HandleFunc("/_cluster", clusterHandler(sched.Reloadch, r))
+	r2.HandleFunc("/check/{id}", checkHandler(sched.Reloadch, r))
 	http.Handle("/public/", http.StripPrefix("/public", http.FileServer(http.Dir("public"))))
 	http.Handle("/", r2)
 	http.ListenAndServe(os.Getenv("UPCHECK_HTTP"), nil)

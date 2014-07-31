@@ -8,6 +8,7 @@ import (
 	"path"
 	"time"
 	"log"
+	"strconv"
 
 	"github.com/hashicorp/raft"
 	"github.com/hashicorp/raft-mdb"
@@ -75,6 +76,7 @@ type Raft struct {
 	transport *raft.NetworkTransport
 	mdb       *raftmdb.MDBStore
 	raft      *raft.Raft
+	peerStore *raft.JSONPeers
 	fsm       *FSM
 }
 
@@ -116,6 +118,7 @@ func NewRaft(prefix, addr string) (r *Raft, err error) {
 	}
 
 	peerStore := raft.NewJSONPeers(raftDir, r.transport)
+	r.peerStore = peerStore
 
 	single := true
 	if !single {
@@ -153,6 +156,23 @@ func NewRaft(prefix, addr string) (r *Raft, err error) {
 	}
 
 	return
+}
+
+func ResolveAPIAddr(addr net.Addr) string {
+	tcpAddr, _ := net.ResolveTCPAddr("tcp", addr.String())
+	ip := ""
+	if tcpAddr.IP != nil {
+		ip = tcpAddr.IP.String()
+	}
+	return ip+":"+strconv.Itoa(tcpAddr.Port-10)
+}
+
+func (r *Raft) Peers() ([]net.Addr, error) {
+	return r.peerStore.Peers()
+}
+
+func (r *Raft) Leader() net.Addr {
+	return r.raft.Leader()
 }
 
 // Close cleanly shutsdown the raft instance.

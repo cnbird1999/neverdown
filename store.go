@@ -2,9 +2,11 @@ package monitoring
 
 import (
 	"fmt"
+	"log"
 	"crypto/rand"
 	"encoding/json"
 	"sync"
+	"time"
 )
 
 func uuid() string {
@@ -95,11 +97,51 @@ type Check struct {
 	LastDown int64 `json:"last_down"`
 	Interval int `json:"interval"`
 	WebHooks []string `json:"webhooks"`
+	Prev time.Time `json:"-"`
+	Next time.Time `json:"-"`
 }
 
 // NewCheck initialize an empty Check, generates an ID.
 func NewCheck() *Check {
-	return &Check{}
+	return &Check{
+		Prev: time.Time{},
+		Next: time.Time{},
+	}
+}
+
+func (c *Check) ComputeNext(now time.Time) {
+	elapsed := now.Sub(c.Next)
+	delay := time.Duration(c.Interval)*time.Second
+	if elapsed > 0 {
+		if c.Next.IsZero() {
+			c.Next = now.Add(delay)
+		} else {
+			c.Next = c.Next.Add(delay)
+		}
+	}
+	return
+}
+
+func (c *Check) Run() {
+	log.Printf("Hey, looks I'm running: %+v", c)
+	return
+}
+
+type byTime []*Check
+
+func (s byTime) Len() int      { return len(s) }
+func (s byTime) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
+func (s byTime) Less(i, j int) bool {
+	// Two zero times should return false.
+	// Otherwise, zero is "greater" than any other time.
+	// (To sort it at the end of the list.)
+	if s[i].Next.IsZero() {
+		return false
+	}
+	if s[j].Next.IsZero() {
+		return true
+	}
+	return s[i].Next.Before(s[j].Next)
 }
 
 // WebHook represent a waiting webhook notification
