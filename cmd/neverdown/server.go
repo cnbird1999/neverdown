@@ -9,7 +9,7 @@ import (
 	"encoding/json"
 
 	"github.com/gorilla/mux"
-	"github.com/tsileo/monitoring"
+	monitoring "github.com/tsileo/neverdown"
 )
 
 var RaftWarmUpTime = 5*time.Second
@@ -90,8 +90,8 @@ func clusterHandler(reload chan<- struct{}, ra *monitoring.Raft) func(http.Respo
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case "GET":
-			leaderAddr := monitoring.ResolveAPIAddr(ra.Leader())
 			peers := ra.PeersAPI()
+			leaderAddr := monitoring.ResolveAPIAddr(ra.Leader())
 			WriteJSON(w, map[string]interface{}{"peers":peers, "leader": leaderAddr})
 		default:
 			w.WriteHeader(http.StatusMethodNotAllowed)

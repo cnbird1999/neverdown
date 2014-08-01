@@ -1,4 +1,4 @@
-package nerverdown
+package neverdown
 
 import (
 	"log"

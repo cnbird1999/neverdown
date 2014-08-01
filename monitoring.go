@@ -159,6 +159,9 @@ func NewRaft(prefix, addr string) (r *Raft, err error) {
 }
 
 func ResolveAPIAddr(addr net.Addr) string {
+	if addr == nil {
+		return ""
+	}
 	tcpAddr, _ := net.ResolveTCPAddr("tcp", addr.String())
 	ip := ""
 	if tcpAddr.IP != nil {
@@ -170,10 +173,13 @@ func ResolveAPIAddr(addr net.Addr) string {
 func (r *Raft) Peers() ([]net.Addr, error) {
 	return r.peerStore.Peers()
 }
+
 func (r *Raft) PeersAPI() ([]string) {
+	fmt.Printf("PeersAPI")
+	addrs, _ := r.Peers()
+	fmt.Printf("Peers:%+v", addrs)
 	peers := []string{}
 	leaderAddr := ResolveAPIAddr(r.Leader())
-	addrs, _ := r.Peers()
 	for _, addr := range addrs {
 		apiAddr := ResolveAPIAddr(addr)
 		if apiAddr != leaderAddr {

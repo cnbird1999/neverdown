@@ -1,4 +1,4 @@
-# Nerverdown
+# Neverdown
 
 Distributed website monitoring system that triggers webhooks when a website status change.
 
