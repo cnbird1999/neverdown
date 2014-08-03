@@ -22,11 +22,20 @@ Distributed website monitoring system that triggers WebHooks when a website stat
 
 ### GET /_cluster
 
+## Deploying with Docker
+
+A [Dockerfile](.docker/Dockerfile) is available.
+
+**Image not pushed on the docker hub yet.**
+
+```console
+$ sudo docker pull tsileo/neverdown
+$ sudo docker run -p 8000:8000 -p 7000:7000 -v /tmp/neverdown_data/:/data/neverdown -e UPCHECK_PEERS=host1:8000,host2:8000;host3:8000 -t tsileo/neverdown
+```
 
 ## TODO
 
 - Leader redirection for the HTTP API
-- Implements WebHooks
 
 ## License
 

@@ -87,7 +87,7 @@ type Raft struct {
 }
 
 // NewRaft initialize raft.
-func NewRaft(prefix, addr string) (r *Raft, err error) {
+func NewRaft(prefix, addr string, peers []string) (r *Raft, err error) {
 	r = new(Raft)
 
 	config := raft.DefaultConfig()
@@ -112,6 +112,16 @@ func NewRaft(prefix, addr string) (r *Raft, err error) {
 		return
 	}
 
+	peersAddr := []net.Addr{}
+	for _, peer := range peers {
+		peerAddr, err := net.ResolveTCPAddr("tcp", peer)
+		if err != nil {
+			panic(fmt.Errorf("Could not ResolveTCPAddr: ", err))
+			return nil, err
+		}
+		peersAddr = append(peersAddr, peerAddr)
+	}
+
 	a, err := net.ResolveTCPAddr("tcp", addr)
 	if err != nil {
 		panic(fmt.Errorf("Could not lookup raft advertise address: ", err))
@@ -125,6 +135,10 @@ func NewRaft(prefix, addr string) (r *Raft, err error) {
 	}
 
 	peerStore := raft.NewJSONPeers(raftDir, r.transport)
+	if err := peerStore.SetPeers(peersAddr); err != nil {
+		panic(fmt.Errorf("Could not set peers: %v", err))
+		return nil, err
+	}
 	r.peerStore = peerStore
 
 	single := true

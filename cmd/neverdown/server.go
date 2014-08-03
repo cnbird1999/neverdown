@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 	"net/http"
+	"strings"
 	"io/ioutil"
 	"time"
 	"encoding/json"
@@ -117,7 +118,7 @@ func pingHandler(ra *monitoring.Raft) func(http.ResponseWriter, *http.Request) {
 
 func main() {
 	var leader bool
-	r, err := monitoring.NewRaft(os.Getenv("UPCHECK_PREFIX"), os.Getenv("UPCHECK_ADDR"))
+	r, err := monitoring.NewRaft(os.Getenv("UPCHECK_PREFIX"), os.Getenv("UPCHECK_ADDR"), strings.Split(os.Getenv("UPCHECK_PEERS"), ","))
 	log.Printf("%+v/%v", r, err)
 	defer r.Close()
 	sched := monitoring.NewScheduler(r)
