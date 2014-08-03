@@ -34,14 +34,20 @@ type FSM struct {
 }
 
 func (fsm *FSM) Apply(l *raft.Log) interface{} {
-	log.Printf("Got log %+v", l)
-	log.Printf("%v", string(l.Data))
+	//log.Printf("Got log %+v", l)
+	//log.Printf("%v", string(l.Data))
 	return fsm.store.ExecCommand(l.Data)
 }
 
 // Snapshot creates a raft snapshot for fast restore.
 func (fsm *FSM) Snapshot() (raft.FSMSnapshot, error) {
-	snapshot := &Snapshot{}
+	data, err := fsm.store.JSON()
+	if err != nil {
+		return nil, err
+	}
+	snapshot := &Snapshot{
+		Data: data,
+	}
 	return snapshot, nil
 }
 
@@ -49,16 +55,17 @@ func (fsm *FSM) Snapshot() (raft.FSMSnapshot, error) {
 func (fsm *FSM) Restore(snap io.ReadCloser) error {
 	log.Printf("FSM Restore")
 	defer snap.Close()
-	return nil
+	return fsm.store.FromJSON(snap)
 }
 
 type Snapshot struct {
+	Data []byte
 
 }
 
 // Persist writes a snapshot to a file. We just serialize all active entries.
 func (s *Snapshot) Persist(sink raft.SnapshotSink) error {
-	_, err := sink.Write([]byte("ok"))
+	_, err := sink.Write(s.Data)
 	if err != nil {
 		sink.Cancel()
 		return err
@@ -196,46 +203,16 @@ func (r *Raft) Leader() net.Addr {
 // Close cleanly shutsdown the raft instance.
 func (r *Raft) Close() {
 	r.transport.Close()
-	future := r.raft.Shutdown()
-	if err := future.Error(); err != nil {
+	if err := r.raft.Shutdown().Error(); err != nil {
 		panic(fmt.Errorf("Error shutting down raft: ", err))
 	}
 	r.mdb.Close()
-	//r.fsm.store.Close()
 }
 
 func (r *Raft) ExecCommand(msg []byte) error {
 	future := r.raft.Apply(msg, 30*time.Second)
 	return future.Error()
 }
-
-// Add wraps the internal raft Apply, for encapsulation!
-// Commands sent to raft are prefixed with a header containing two bytes of
-// additional data:
-// - the first byte indicates the schema version of the log entry
-// - the second byte indicates the command type
-// - Add includes 16 bytes after this for the entry UUID
-//
-// Add panics if it cannot create a UUID
-//func (r *Raft) Add(cmd []byte, timeout time.Duration) error {
-//	uuid, err := newUUID()
-//	if err != nil {
-//		Panic("Could not generate entry UUID")
-//	}
-//
-//	h := append([]byte{logSchemaVersion, byte(addCmd)}, uuid...)
-//	Debug(h)
-//	future := r.raft.Apply(append(h, cmd...), timeout)
-//	return future.Error()
-//}
-
-// Remove enqueues a remove command in raft. Like Add, it prefixes version and
-// command type.
-//func (r *Raft) Remove(cmd []byte, timeout time.Duration) error {
-//	h := []byte{logSchemaVersion, byte(rmCmd)}
-//	future := r.raft.Apply(append(h, cmd...), timeout)
-//	return future.Error()
-//}
 
 // Sync the FSM
 func (r *Raft) Sync() error {

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"sync"
 	"time"
+	"io"
 )
 
 func uuid() string {
@@ -51,11 +52,12 @@ func (s *Store) JSON() ([]byte, error) {
 }
 
 // FromJSON loads the store from a JSON export.
-func (s *Store) FromJSON(js []byte) error {
+func (s *Store) FromJSON(r io.Reader) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	data := map[string]interface{}{}
-	if err := json.Unmarshal(js, &data); err != nil {
+	decoder := json.NewDecoder(r)
+	if err := decoder.Decode(&data); err != nil {
 		return err
 	}
 	for _, c := range data["checks"].([]Check) {

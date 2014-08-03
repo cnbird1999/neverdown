@@ -2,46 +2,78 @@ package neverdown
 
 import (
 	"log"
+	nurl "net/url"
+	"net"
 	"net/http"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"io/ioutil"
+	"time"
 )
 
-var client = &http.Client{}
-
-type PingResponse struct {
-	StatusCode int `json:"status_code"`
-	Error error `json:"error"`
-	Success bool `json:"success"`
+var client = &http.Client{
+	Timeout: 10*time.Second,
 }
 
-func PerformCheck(url string) *PingResponse {
+type PingResponse struct {
+	URL string `json:"url"`
+	Up bool `json:"up"`
+	Error struct {
+		StatusCode int `json:"status_code"`
+		Type string `json:"type"`
+		Error string `json:"error"`
+	} `json:"error"`
+}
+
+func PerformCheck(url string) (*PingResponse, error) {
 	// TODO better check url//better response
 	log.Printf("Checking %v...", url)
-	pingResp := &PingResponse{}
+	pr := &PingResponse{
+		URL: url,
+	}
 	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		pingResp.Error = err
-		return pingResp
+		return nil, err
 	}
 	resp, err := client.Do(request)
 	if err != nil {
-		pingResp.Error = err
-		return pingResp
+		nerr, ok := err.(*nurl.Error)
+		if ok {
+			switch err := nerr.Err.(type) {
+			case *net.OpError:
+				switch err.Err.(type) {
+				case *net.DNSError:
+					pr.Error.Type = "dns"
+					errs := strings.Split(err.Error(), ": ")
+					pr.Error.Error = errs[len(errs)-1]
+				default:
+					pr.Error.Type = "unknow"
+					pr.Error.Error = err.Error()
+				}
+			default:
+				pr.Error.Type = "unknow"
+				pr.Error.Error = err.Error()
+			}
+		} else {
+			pr.Error.Type = "unknow"
+			pr.Error.Error = err.Error()
+		}
+		return pr, nil
 	}
 	defer resp.Body.Close()
-	pingResp.StatusCode = resp.StatusCode
+	pr.Error.StatusCode = resp.StatusCode
 	if resp.StatusCode == 200 {
-		pingResp.Success = true
+		pr.Up = true
 	} else {
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			panic(err)
+			return pr, nil
 		}
-		pingResp.Error = fmt.Errorf("%v", string(body))
+		pr.Error.Type = "server"
+		pr.Error.Error = string(body)
 	}
-	return pingResp
+	return pr, nil
 }
 
 func PerformAPICheck(peer, url string) (*PingResponse, error) {
@@ -69,4 +101,38 @@ func PerformAPICheck(peer, url string) (*PingResponse, error) {
 
 func LeaderCheck(ra *Raft, check *Check) {
 	log.Printf("LeaderCheck %+v", check)
+	pr, err := PerformCheck(check.URL)
+	if err != nil {
+		panic(err)
+	}
+	if pr.Up {
+		check.Up = true
+		return
+	}
+	prs := []*PingResponse{pr}
+	for _, peer := range ra.PeersAPI() {
+		ppr, err := PerformAPICheck(peer, check.URL)
+		if err != nil {
+			panic(err)
+		}
+		if ppr.Up {
+			// TODO notify that the leader see the check as down
+			return
+		}
+		prs = append(prs, ppr)
+	}
+	js, err := json.Marshal(prs)
+	if err != nil {
+		panic(err)
+	}
+	log.Printf("Webhook BODY: %v", string(js))
+	check.Up = false
+	check.LastDown = time.Now().UTC().Unix()
+	// If all the responses are down, too, the website is definitely down
+	// and we execute webhooks
+
+	// POST request with list of ping reponse
+	return
 }
+
+

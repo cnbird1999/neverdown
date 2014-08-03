@@ -65,9 +65,15 @@ func (d *Scheduler) Run() {
 					break
 				}
 				check.Prev = check.Next
-				go LeaderCheck(d.raft, check)
-				d.raft.ExecCommand(check.ToPostCmd())
-				check.LastCheck = check.Next.Unix()
+				go func(check *Check) {
+					LeaderCheck(d.raft, check)
+					if !check.Next.IsZero() {
+						check.LastCheck = check.Next.Unix()
+					}
+					if err := d.raft.ExecCommand(check.ToPostCmd()); err != nil {
+						panic(err)
+					}
+				}(check)
 				check.ComputeNext(now)
 				continue
 			}
