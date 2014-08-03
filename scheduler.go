@@ -14,6 +14,7 @@ type Scheduler struct {
 	checks    []*Check
 }
 
+// NewScheduler initialize a new empty Scheduler.
 func NewScheduler(raft *Raft) *Scheduler {
 	return &Scheduler{
 		raft: raft,
@@ -27,6 +28,7 @@ func (d *Scheduler) Stop() {
 	d.stop <- struct{}{}
 }
 
+// Reload will recompute the next execution time of every checks.
 func (d *Scheduler) Reload() {
 	d.Reloadch <- struct{}{}
 }

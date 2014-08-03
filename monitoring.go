@@ -87,6 +87,7 @@ type Raft struct {
 	fsm       *FSM
 }
 
+// NewRaft initialize raft.
 func NewRaft(prefix, addr string) (r *Raft, err error) {
 	r = new(Raft)
 
@@ -165,6 +166,7 @@ func NewRaft(prefix, addr string) (r *Raft, err error) {
 	return
 }
 
+// ResolveAPIAddr return the API address for the given raft node.
 func ResolveAPIAddr(addr net.Addr) string {
 	if addr == nil {
 		return ""
@@ -177,10 +179,12 @@ func ResolveAPIAddr(addr net.Addr) string {
 	return ip+":"+strconv.Itoa(tcpAddr.Port-10)
 }
 
+// Peers returns the address of every nodes in the raft cluster.
 func (r *Raft) Peers() ([]net.Addr, error) {
 	return r.peerStore.Peers()
 }
 
+// PeersAPI returns the HTTP JSON API endpoints of every nodes in the raft cluster.
 func (r *Raft) PeersAPI() ([]string) {
 	fmt.Printf("PeersAPI")
 	addrs, _ := r.Peers()
@@ -196,6 +200,7 @@ func (r *Raft) PeersAPI() ([]string) {
 	return peers
 }
 
+// Leader returns the address of raft leader.
 func (r *Raft) Leader() net.Addr {
 	return r.raft.Leader()
 }

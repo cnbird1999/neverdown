@@ -1,14 +1,14 @@
 # Neverdown
 
-Distributed website monitoring system that triggers webhooks when a website status change.
+Distributed website monitoring system that triggers WebHooks when a website status change.
 
 ## Features
 
 - A simple HTTP JSON API
 - Distributed using [raft](https://github.com/hashicorp/raft) (a 3 nodes cluster can tolerate one failure)
-- Trigger WebHooks when a webiste status change (down->up/up->down)
+- Trigger WebHooks when a website status change (down->up/up->down)
 
-## API
+## API endpoints
 
 ### GET /check
 
@@ -17,6 +17,11 @@ Distributed website monitoring system that triggers webhooks when a website stat
 ### GET /check/{id}
 
 ### DELETE /check/{id}
+
+### GET /_ping
+
+### GET /_cluster
+
 
 ## TODO
 

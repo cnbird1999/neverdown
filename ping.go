@@ -16,6 +16,7 @@ var client = &http.Client{
 	Timeout: 10*time.Second,
 }
 
+// PingResponse is the results of a check PING
 type PingResponse struct {
 	URL string `json:"url"`
 	Up bool `json:"up"`
@@ -26,6 +27,7 @@ type PingResponse struct {
 	} `json:"error"`
 }
 
+// PerformCheck execute the check request and returns a PingResponse.
 func PerformCheck(url string) (*PingResponse, error) {
 	// TODO better check url//better response
 	log.Printf("Checking %v...", url)
@@ -76,8 +78,8 @@ func PerformCheck(url string) (*PingResponse, error) {
 	return pr, nil
 }
 
+// PerformAPICheck query the ping api of the given remote peer for the given URL.
 func PerformAPICheck(peer, url string) (*PingResponse, error) {
-	// TODO better check url//better response
 	log.Printf("Calling %v...", url)
 	pingResponse := &PingResponse{}
 	request, err := http.NewRequest("GET", peer+"?url="+url, nil)
@@ -89,50 +91,51 @@ func PerformAPICheck(peer, url string) (*PingResponse, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode == 200 {
-		return nil, fmt.Errorf("failed %v", resp)
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("ping request failed %v", resp)
 	}
-	decoder := json.NewDecoder(resp.Body)
-	if err := decoder.Decode(pingResponse); err != nil {
+	if err := json.NewDecoder(resp.Body).Decode(pingResponse); err != nil {
 		return nil,  err
 	}
 	return pingResponse, nil
 }
 
-func LeaderCheck(ra *Raft, check *Check) {
+// LeaderCheck is the check function called by the raft leader,
+// if the website is down for the leader , it will ask followers for confirmation,
+// if the website is down for one of the follower, a warning is emitted but the website isn't
+// declared down.
+func LeaderCheck(ra *Raft, check *Check) error {
 	log.Printf("LeaderCheck %+v", check)
 	pr, err := PerformCheck(check.URL)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	if pr.Up {
 		check.Up = true
-		return
+		return nil
 	}
+	// If all the responses are down, too, the website is definitely down
+	// and we execute webhooks
 	prs := []*PingResponse{pr}
 	for _, peer := range ra.PeersAPI() {
 		ppr, err := PerformAPICheck(peer, check.URL)
 		if err != nil {
-			panic(err)
+			return err
 		}
 		if ppr.Up {
-			// TODO notify that the leader see the check as down
-			return
+			log.Printf("WARNING: leader flagged the check as \"down\": %+v", pr)
+			return nil
 		}
 		prs = append(prs, ppr)
 	}
 	js, err := json.Marshal(prs)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	log.Printf("Webhook BODY: %v", string(js))
 	check.Up = false
 	check.LastDown = time.Now().UTC().Unix()
-	// If all the responses are down, too, the website is definitely down
-	// and we execute webhooks
-
+	check.LastError = pr.Error
 	// POST request with list of ping reponse
 	return
 }
-
-

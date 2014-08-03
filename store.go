@@ -94,6 +94,7 @@ type Check struct {
 	ID string `json:"id"`
 	URL string `json:"url"`
 	LastCheck int64 `json:"last_check"`
+	LastError interface{} `json:"last_error"`
 	Up bool `json:"up"`
 	LastDown int64 `json:"last_down"`
 	Interval int `json:"interval"`
@@ -110,6 +111,7 @@ func NewCheck() *Check {
 	}
 }
 
+// ComputeNext computes the next check execution time
 func (c *Check) ComputeNext(now time.Time) {
 	elapsed := now.Sub(c.Next)
 	delay := time.Duration(c.Interval)*time.Second
@@ -123,6 +125,7 @@ func (c *Check) ComputeNext(now time.Time) {
 	return
 }
 
+// ToPostCmd serializes a Check into a raft POST command
 func (c *Check) ToPostCmd() []byte {
 	js, err := json.Marshal(c)
 	if err != nil {
@@ -151,13 +154,13 @@ func (s byTime) Less(i, j int) bool {
 	return s[i].Next.Before(s[j].Next)
 }
 
-// WebHook represent a waiting webhook notification
+// WebHook represent a waiting webhook notification that hasn't been successfully executed.
 type WebHook struct {
 	ID string `json:"id"`
 	Retries int `json:"retries"`
 }
 
-// NewWebHook initialize an empty WebHook, generates an ID;
+// NewWebHook initialize an empty WebHook.
 func NewWebHook() *WebHook {
 	return &WebHook{}
 }
