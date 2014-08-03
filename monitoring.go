@@ -78,6 +78,7 @@ func (s *Snapshot) Release() {
 
 // Raft encapsulates the raft specific logic for startup and shutdown.
 type Raft struct {
+	Addr net.Addr
 	Store *Store
 	transport *raft.NetworkTransport
 	mdb       *raftmdb.MDBStore
@@ -127,6 +128,7 @@ func NewRaft(prefix, addr string, peers []string) (r *Raft, err error) {
 		panic(fmt.Errorf("Could not lookup raft advertise address: ", err))
 		return
 	}
+	r.Addr = a
 
 	r.transport, err = raft.NewTCPTransport(addr, a, 3, 10*time.Second, nil)
 	if err != nil {

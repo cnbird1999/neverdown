@@ -4,11 +4,28 @@ Distributed website monitoring system that triggers WebHooks when a website stat
 
 ## Features
 
-- A simple HTTP JSON API
+- A simple HTTP JSON API (using [Hawk](https://github.com/hueniverse/hawk) authentication)
 - Distributed using [raft](https://github.com/hashicorp/raft) (a 3 nodes cluster can tolerate one failure)
 - Trigger WebHooks when a website status change (down->up/up->down)
 
 ## API endpoints
+
+The API uses Hawk as authentication mechanism, to play with the API from the command-line,
+the easiest way is to install [HTTPie](http://httpie.org) (with [requests-auth](https://github.com/mozilla-services/requests-hawk)).
+
+```console
+$ sudo pip install --upgrade httpie requests-hawk
+$ http GET 192.168.1.20:7990/_cluster --auth-type=hawk --auth='thomas:debug'
+HTTP/1.1 200 OK
+Content-Length: 29
+Content-Type: application/json
+Date: Sun, 03 Aug 2014 18:59:01 GMT
+
+{
+    "leader": ":7990", 
+    "peers": []
+}
+```
 
 ### GET /check
 
@@ -21,6 +38,19 @@ Distributed website monitoring system that triggers WebHooks when a website stat
 ### GET /_ping
 
 ### GET /_cluster
+
+```console
+$ http GET 192.168.1.20:7990/_cluster --auth-type=hawk --auth='thomas:debug'
+HTTP/1.1 200 OK
+Content-Length: 29
+Content-Type: application/json
+Date: Sun, 03 Aug 2014 18:59:01 GMT
+
+{
+    "leader": ":7990", 
+    "peers": []
+}
+```
 
 ## Deploying with Docker
 

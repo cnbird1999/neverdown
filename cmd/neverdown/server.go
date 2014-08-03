@@ -5,13 +5,51 @@ import (
 	"os"
 	"net/http"
 	"strings"
+	"errors"
+	"crypto/sha256"
 	"io/ioutil"
 	"time"
 	"encoding/json"
 
+	"github.com/tent/hawk-go"
 	"github.com/gorilla/mux"
 	monitoring "github.com/tsileo/neverdown"
 )
+
+var creds map[string]string
+
+func CredentialsLookupFunc(c *hawk.Credentials) error {
+    key, ok := creds[c.ID]
+    if !ok {
+        return errors.New("client ID does not exist: " + c.ID)
+    }
+    c.Key = key
+    c.Hash = sha256.New
+    return nil
+}
+
+func HawkHandler(handlerFunc http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		auth, err := hawk.NewAuthFromRequest(r, CredentialsLookupFunc, nil)
+		if err != nil {
+			w.Header().Set("WWW-Authenticate", "Hawk")
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		if err := auth.Valid(); err != nil {
+			w.Header().Set("WWW-Authenticate", "Hawk")
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		//context.Set(req, "token", token)
+		handlerFunc.ServeHTTP(w, r)
+	}
+}
+
+func init() {
+    creds = make(map[string]string)
+    creds["thomas"] = "debug" // TODO remove this
+}
 
 var RaftWarmUpTime = 5*time.Second
 
@@ -91,6 +129,7 @@ func clusterHandler(reload chan<- struct{}, ra *monitoring.Raft) func(http.Respo
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case "GET":
+			log.Printf("URL:%+v", r)
 			peers := ra.PeersAPI()
 			leaderAddr := monitoring.ResolveAPIAddr(ra.Leader())
 			WriteJSON(w, map[string]interface{}{"peers":peers, "leader": leaderAddr})
@@ -140,12 +179,12 @@ func main() {
 		sched.Reloadch<- struct{}{}
 	}()
 	r2 := mux.NewRouter()
-	r2.HandleFunc("/_cluster", clusterHandler(sched.Reloadch, r))
+	r2.HandleFunc("/_cluster", HawkHandler(clusterHandler(sched.Reloadch, r)))
 	r2.HandleFunc("/_ping", pingHandler(r))
 	r2.HandleFunc("/check", checksHandler(sched.Reloadch, r))
 	r2.HandleFunc("/check/{id}", checkHandler(sched.Reloadch, r))
 	http.Handle("/", r2)
-	http.ListenAndServe(os.Getenv("UPCHECK_HTTP"), nil)
+	http.ListenAndServe(monitoring.ResolveAPIAddr(r.Addr), nil)
 	for {
 		time.Sleep(time.Second)
 	}
