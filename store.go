@@ -17,7 +17,7 @@ func uuid() string {
     return fmt.Sprintf("%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:])
 }
 
-// Store holds active checks, and pending webhook notification
+// Store holds active checks, and pending WebHook notifications.
 type Store struct {
 	ChecksIndex map[string]*Check
 	PendingWebHooksIndex map[string]*WebHook
@@ -51,20 +51,24 @@ func (s *Store) JSON() ([]byte, error) {
 	return json.Marshal(&data)
 }
 
+type JSONStore struct {
+	Checks []*Check `json:"checks"`
+	PendingWebHooks []*WebHook `json:"pending_webhooks"`
+}
+
 // FromJSON loads the store from a JSON export.
 func (s *Store) FromJSON(r io.Reader) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	data := map[string]interface{}{}
-	decoder := json.NewDecoder(r)
-	if err := decoder.Decode(&data); err != nil {
+	data := JSONStore{}
+	if err := json.NewDecoder(r).Decode(&data); err != nil {
 		return err
 	}
-	for _, c := range data["checks"].([]Check) {
-		s.ChecksIndex[c.ID] = &c
+	for _, check := range data.Checks {
+		s.ChecksIndex[check.ID] = check
 	}
-	for _, wh := range data["pending_webhooks"].([]WebHook) {
-		s.PendingWebHooksIndex[wh.ID] = &wh
+	for _, webhook := range data.PendingWebHooks {
+		s.PendingWebHooksIndex[webhook.ID] = webhook
 	}
 	return nil
 }
@@ -77,6 +81,10 @@ func (s *Store) ExecCommand(data []byte) error {
 		check := NewCheck()
 		if err := json.Unmarshal(data[1:], check); err != nil {
 			return err
+		}
+		if check.WebHooks == nil {
+			check.WebHooks = []string{}
+			check.Prev = time.Unix(check.LastCheck, 0).UTC()
 		}
 		s.ChecksIndex[check.ID] = check
 	case 1:
@@ -93,12 +101,14 @@ func (s *Store) ExecCommand(data []byte) error {
 type Check struct {
 	ID string `json:"id"`
 	URL string `json:"url"`
+	Method string `json:"method"`
 	LastCheck int64 `json:"last_check"`
 	LastError interface{} `json:"last_error"`
 	Up bool `json:"up"`
 	LastDown int64 `json:"last_down"`
 	Interval int `json:"interval"`
 	WebHooks []string `json:"webhooks"`
+
 	Prev time.Time `json:"-"`
 	Next time.Time `json:"-"`
 }
@@ -108,6 +118,9 @@ func NewCheck() *Check {
 	return &Check{
 		Prev: time.Time{},
 		Next: time.Time{},
+		WebHooks: []string{},
+		Method: "HEAD",
+		Interval: 60, // 60 seconds resolution between checks if no interval is provided.
 	}
 }
 

@@ -68,9 +68,13 @@ func (d *Scheduler) Run() {
 				}
 				check.Prev = check.Next
 				go func(check *Check) {
+					oldStatus := check.Up
 					LeaderCheck(d.raft, check)
 					if !check.Next.IsZero() {
 						check.LastCheck = check.Next.Unix()
+					}
+					if check.Up != oldStatus {
+						// Trigger webhook
 					}
 					if err := d.raft.ExecCommand(check.ToPostCmd()); err != nil {
 						panic(err)

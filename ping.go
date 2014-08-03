@@ -28,13 +28,13 @@ type PingResponse struct {
 }
 
 // PerformCheck execute the check request and returns a PingResponse.
-func PerformCheck(url string) (*PingResponse, error) {
+func PerformCheck(method, url string) (*PingResponse, error) {
 	// TODO better check url//better response
 	log.Printf("Checking %v...", url)
 	pr := &PingResponse{
 		URL: url,
 	}
-	request, err := http.NewRequest("GET", url, nil)
+	request, err := http.NewRequest(method, url, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -79,10 +79,10 @@ func PerformCheck(url string) (*PingResponse, error) {
 }
 
 // PerformAPICheck query the ping api of the given remote peer for the given URL.
-func PerformAPICheck(peer, url string) (*PingResponse, error) {
+func PerformAPICheck(peer, method, url string) (*PingResponse, error) {
 	log.Printf("Calling %v...", url)
 	pingResponse := &PingResponse{}
-	request, err := http.NewRequest("GET", peer+"?url="+url, nil)
+	request, err := http.NewRequest("GET", peer+"?method="+method+"&url="+url, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -106,7 +106,7 @@ func PerformAPICheck(peer, url string) (*PingResponse, error) {
 // declared down.
 func LeaderCheck(ra *Raft, check *Check) error {
 	log.Printf("LeaderCheck %+v", check)
-	pr, err := PerformCheck(check.URL)
+	pr, err := PerformCheck(check.Method, check.URL)
 	if err != nil {
 		return err
 	}
@@ -118,24 +118,20 @@ func LeaderCheck(ra *Raft, check *Check) error {
 	// and we execute webhooks
 	prs := []*PingResponse{pr}
 	for _, peer := range ra.PeersAPI() {
-		ppr, err := PerformAPICheck(peer, check.URL)
+		ppr, err := PerformAPICheck(peer, check.Method, check.URL)
 		if err != nil {
 			return err
 		}
 		if ppr.Up {
-			log.Printf("WARNING: leader flagged the check as \"down\": %+v", pr)
+			log.Printf("WARNING: leader flagged the check as \"down\", but others peers found it \"up\": %+v", pr)
 			return nil
 		}
 		prs = append(prs, ppr)
 	}
-	js, err := json.Marshal(prs)
-	if err != nil {
-		return err
-	}
-	log.Printf("Webhook BODY: %v", string(js))
+	log.Printf("Ping results for nodes: %+v", prs)
 	check.Up = false
 	check.LastDown = time.Now().UTC().Unix()
 	check.LastError = pr.Error
 	// POST request with list of ping reponse
-	return
+	return nil
 }

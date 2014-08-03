@@ -53,7 +53,6 @@ func (fsm *FSM) Snapshot() (raft.FSMSnapshot, error) {
 
 // Restore from a raft snapshot
 func (fsm *FSM) Restore(snap io.ReadCloser) error {
-	log.Printf("FSM Restore")
 	defer snap.Close()
 	return fsm.store.FromJSON(snap)
 }
@@ -188,7 +187,6 @@ func (r *Raft) Peers() ([]net.Addr, error) {
 func (r *Raft) PeersAPI() ([]string) {
 	fmt.Printf("PeersAPI")
 	addrs, _ := r.Peers()
-	fmt.Printf("Peers:%+v", addrs)
 	peers := []string{}
 	leaderAddr := ResolveAPIAddr(r.Leader())
 	for _, addr := range addrs {

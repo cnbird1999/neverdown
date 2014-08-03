@@ -103,7 +103,11 @@ func pingHandler(ra *monitoring.Raft) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case "GET":
-			pr, _ := monitoring.PerformCheck(r.FormValue("url"))
+			method := r.FormValue("method")
+			if method == "" {
+				method = "HEAD"
+			}
+			pr, _ := monitoring.PerformCheck(method, r.FormValue("url"))
 			WriteJSON(w, pr)
 		default:
 			w.WriteHeader(http.StatusMethodNotAllowed)
