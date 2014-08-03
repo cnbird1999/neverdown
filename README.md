@@ -62,6 +62,19 @@ A [Dockerfile](.docker/Dockerfile) is available.
 $ sudo docker pull tsileo/neverdown
 $ sudo docker run -p 8000:8000 -p 7000:7000 -v /tmp/neverdown_data/:/data/neverdown -e UPCHECK_PEERS=host1:8000,host2:8000;host3:8000 -t tsileo/neverdown
 ```
+## Security
+
+### Raft
+
+You should setup ssh tunnels and listen only on local interfaces.
+
+```console
+$ autossh -f -NL 8001:127.0.0.1:8001 user@remote_host
+```
+
+### HTTP API
+
+Thanks to Hawk, you can serve the HTTP API without TLS (except if you worry about eavesdropping).
 
 ## TODO
 

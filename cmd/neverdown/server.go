@@ -180,9 +180,9 @@ func main() {
 	}()
 	r2 := mux.NewRouter()
 	r2.HandleFunc("/_cluster", HawkHandler(clusterHandler(sched.Reloadch, r)))
-	r2.HandleFunc("/_ping", pingHandler(r))
-	r2.HandleFunc("/check", checksHandler(sched.Reloadch, r))
-	r2.HandleFunc("/check/{id}", checkHandler(sched.Reloadch, r))
+	r2.HandleFunc("/_ping", HawkHandler(pingHandler(r)))
+	r2.HandleFunc("/check", HawkHandler(checksHandler(sched.Reloadch, r)))
+	r2.HandleFunc("/check/{id}", HawkHandler(checkHandler(sched.Reloadch, r)))
 	http.Handle("/", r2)
 	http.ListenAndServe(monitoring.ResolveAPIAddr(r.Addr), nil)
 	for {
