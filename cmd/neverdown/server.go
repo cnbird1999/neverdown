@@ -45,13 +45,19 @@ func checksHandler(reload chan<- struct{}, ra *monitoring.Raft) func(http.Respon
 				panic(err)
 			}
 			defer r.Body.Close()
+			log.Printf("GOT DATA:%v", string(data))
 			msg := make([]byte, len(data)+1)
 			msg[0] = 0
 			copy(msg[1:], data)
 			if err := ra.ExecCommand(msg); err != nil {
 				panic(err)
 			}
-			reload<- struct{}{}
+			log.Printf("After ExecCommand")
+			go func() {
+				reload<- struct{}{}
+			}()
+			log.Printf("After Reload")
+			return
 		default:
 			w.WriteHeader(http.StatusMethodNotAllowed)
 		}
@@ -122,7 +128,8 @@ func main() {
 	r, err := monitoring.NewRaft(os.Getenv("UPCHECK_PREFIX"), os.Getenv("UPCHECK_ADDR"), strings.Split(os.Getenv("UPCHECK_PEERS"), ","))
 	log.Printf("%+v/%v", r, err)
 	defer r.Close()
-	sched := monitoring.NewScheduler(r)
+	webhookSched := monitoring.NewWebHookScheduler(r)
+	sched := monitoring.NewScheduler(r, webhookSched)
 	go func() {
 		for isLeader := range r.LeaderCh() {
 			log.Printf("Leader change %v", isLeader)

@@ -85,7 +85,7 @@ type Raft struct {
 	raft      *raft.Raft
 	peerStore *raft.JSONPeers
 	fsm       *FSM
-	leader bool
+	//leader bool
 }
 
 // NewRaft initialize raft.
@@ -178,12 +178,6 @@ func NewRaft(prefix, addr string, peers []string) (r *Raft, err error) {
 		panic(fmt.Errorf("Could not initialize raft: ", err))
 		return
 	}
-
-	go func() {
-		for isLeader := range r.raft.LeaderCh() {
-			r.leader = isLeader
-		}
-	}()
 	return
 }
 
@@ -226,9 +220,9 @@ func (r *Raft) Leader() net.Addr {
 }
 
 // IsLeader returns true if the current node is the raft leader.
-func (r *Raft) IsLeader() bool {
-	return r.leader
-}
+//func (r *Raft) IsLeader() bool {
+//	return r.leader
+//}
 
 // Close cleanly shutsdown the raft instance.
 func (r *Raft) Close() {

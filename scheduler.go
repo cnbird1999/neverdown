@@ -8,6 +8,7 @@ import (
 
 type Scheduler struct {
 	raft *Raft
+	webhookSched *WebHookScheduler
 	stop    chan struct{}
 	Reloadch chan struct{}
 	running bool
@@ -15,9 +16,10 @@ type Scheduler struct {
 }
 
 // NewScheduler initialize a new empty Scheduler.
-func NewScheduler(raft *Raft) *Scheduler {
+func NewScheduler(raft *Raft, webhookSched *WebHookScheduler) *Scheduler {
 	return &Scheduler{
 		raft: raft,
+		webhookSched: webhookSched,
 		stop: make(chan struct{}),
 		Reloadch: make(chan struct{}),
 	}
@@ -25,6 +27,7 @@ func NewScheduler(raft *Raft) *Scheduler {
 
 // Stop shutdown the Scheduler cleanly.
 func (d *Scheduler) Stop() {
+	d.webhookSched.Stop()
 	d.stop <- struct{}{}
 }
 
@@ -43,6 +46,8 @@ func (d *Scheduler) updateChecks() error {
 
 // Run start the processing of jobs, and listen for config update.
 func (d *Scheduler) Run() {
+	go d.webhookSched.Run()
+	log.Println("Scheduler Run")
 	if err := d.updateChecks(); err != nil {
 		panic(err)
 	}
@@ -74,7 +79,7 @@ func (d *Scheduler) Run() {
 						check.LastCheck = check.Next.Unix()
 					}
 					if check.Up != oldStatus {
-						if err := ExecuteWebhooks(d.raft, check); err != nil {
+						if err := ExecuteWebhooks(d.raft, d.webhookSched, check); err != nil {
 							panic(err)
 						}
 					}

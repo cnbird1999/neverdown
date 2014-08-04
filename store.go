@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"sync"
+	"math"
 	"time"
 	"io"
 )
@@ -130,6 +131,7 @@ func NewCheck() *Check {
 		WebHooks: []string{},
 		Method: "HEAD",
 		Interval: 60, // 60 seconds resolution between checks if no interval is provided.
+		Up: true,
 	}
 }
 
@@ -176,12 +178,32 @@ func (s byTime) Less(i, j int) bool {
 	return s[i].Next.Before(s[j].Next)
 }
 
+
+type webhookByTime []*WebHook
+
+func (s webhookByTime) Len() int      { return len(s) }
+func (s webhookByTime) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
+func (s webhookByTime) Less(i, j int) bool {
+	// Two zero times should return false.
+	// Otherwise, zero is "greater" than any other time.
+	// (To sort it at the end of the list.)
+	if s[i].Next.IsZero() {
+		return false
+	}
+	if s[j].Next.IsZero() {
+		return true
+	}
+	return s[i].Next.Before(s[j].Next)
+}
+
 // WebHook represent a waiting webhook notification that hasn't been successfully executed.
 type WebHook struct {
 	ID string `json:"id"`
 	URL string `json:"url"`
 	Payload []byte `json:"payload"`
-	Retries int `json:"retries"`
+	Tries int `json:"tries"`
+	FirstTry int64 `json:"first_try"`
+	Next time.Time `json:"-"`
 }
 
 // NewWebHook initialize an empty WebHook.
@@ -189,6 +211,21 @@ func NewWebHook() *WebHook {
 	return &WebHook{
 		ID: uuid(),
 	}
+}
+
+// ComputeNext computes the next check execution time
+func (wh *WebHook) ComputeNext(now time.Time) {
+	elapsed := now.Sub(wh.Next)
+	// Exponential backoff retry
+	delay := time.Duration(math.Pow(float64(2), float64(wh.Tries))/2)*time.Second
+	if elapsed > 0 {
+		if wh.Next.IsZero() {
+			wh.Next = now.Add(delay)
+		} else {
+			wh.Next = wh.Next.Add(delay)
+		}
+	}
+	return
 }
 
 // ToPostCmd serializes a WebHook into a raft POST command

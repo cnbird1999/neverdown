@@ -7,6 +7,7 @@ Distributed website monitoring system that triggers WebHooks when a website stat
 - A simple HTTP JSON API
 - Distributed using [raft](https://github.com/hashicorp/raft) (a 3 nodes cluster can tolerate one failure)
 - Trigger WebHooks when a website status change (down->up/up->down)
+- If a WebHook is not received, it will be retried up to 20 (with exponential backoff)
 
 ## API endpoints
 
