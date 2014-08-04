@@ -89,8 +89,17 @@ func (s *Store) ExecCommand(data []byte) error {
 		s.ChecksIndex[check.ID] = check
 	case 1:
 		checkID := string(data[1:])
-		fmt.Printf("delete %v", checkID)
 		delete(s.ChecksIndex, checkID)
+	case 2:
+		webhook := NewWebHook()
+		if err := json.Unmarshal(data[1:], webhook); err != nil {
+			return err
+		}
+		s.PendingWebHooksIndex[webhook.ID] = webhook
+	case 3:
+		webhookID := string(data[1:])
+		delete(s.PendingWebHooksIndex, webhookID)
+
 	default:
 		panic("unknow cmd type")
 	}
@@ -170,10 +179,35 @@ func (s byTime) Less(i, j int) bool {
 // WebHook represent a waiting webhook notification that hasn't been successfully executed.
 type WebHook struct {
 	ID string `json:"id"`
+	URL string `json:"url"`
+	Payload []byte `json:"payload"`
 	Retries int `json:"retries"`
 }
 
 // NewWebHook initialize an empty WebHook.
 func NewWebHook() *WebHook {
-	return &WebHook{}
+	return &WebHook{
+		ID: uuid(),
+	}
+}
+
+// ToPostCmd serializes a WebHook into a raft POST command
+func (wh *WebHook) ToPostCmd() []byte {
+	js, err := json.Marshal(wh)
+	if err != nil {
+		panic(err)
+	}
+	msg := make([]byte, len(js)+1)
+	msg[0] = 2
+	copy(msg[1:], js)
+	return msg
+}
+
+// ToDeleteCmd serializes a WebHook into a raft delete command
+func (wh *WebHook) ToDeleteCmd() []byte {
+	buuid := []byte(wh.ID)
+	msg := make([]byte, len(buuid)+1)
+	msg[0] = 3
+	copy(msg[1:], buuid)
+	return msg
 }
