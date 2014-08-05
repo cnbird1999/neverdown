@@ -1,19 +1,12 @@
-package main
+package neverdown
 
 import (
-	"log"
-	"os"
 	"net/http"
-	"strings"
 	"io/ioutil"
-	"time"
 	"encoding/json"
 
 	"github.com/gorilla/mux"
-	monitoring "github.com/tsileo/neverdown"
 )
-
-var RaftWarmUpTime = 5*time.Second
 
 func WriteJSON(w http.ResponseWriter, data interface{}) {
 	js, err := json.Marshal(data)
@@ -25,15 +18,15 @@ func WriteJSON(w http.ResponseWriter, data interface{}) {
 	w.Write(js)
 }
 
-func checksHandler(reload chan<- struct{}, ra *monitoring.Raft) func(http.ResponseWriter, *http.Request) {
+func checksHandler(reload chan<- struct{}, ra *Raft) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case "GET":
 			if err := ra.Sync(); err != nil {
 				panic(err)
 			}
-			res := map[string][]*monitoring.Check{
-				"checks": []*monitoring.Check{},
+			res := map[string][]*Check{
+				"checks": []*Check{},
 			}
 			for _, check := range ra.Store.ChecksIndex {
 				res["checks"] = append(res["checks"], check)
@@ -45,18 +38,13 @@ func checksHandler(reload chan<- struct{}, ra *monitoring.Raft) func(http.Respon
 				panic(err)
 			}
 			defer r.Body.Close()
-			log.Printf("GOT DATA:%v", string(data))
 			msg := make([]byte, len(data)+1)
 			msg[0] = 0
 			copy(msg[1:], data)
 			if err := ra.ExecCommand(msg); err != nil {
 				panic(err)
 			}
-			log.Printf("After ExecCommand")
-			go func() {
-				reload<- struct{}{}
-			}()
-			log.Printf("After Reload")
+			reload<- struct{}{}
 			return
 		default:
 			w.WriteHeader(http.StatusMethodNotAllowed)
@@ -64,7 +52,7 @@ func checksHandler(reload chan<- struct{}, ra *monitoring.Raft) func(http.Respon
 	}
 }
 
-func checkHandler(reload chan<- struct{}, ra *monitoring.Raft) func(http.ResponseWriter, *http.Request) {
+func checkHandler(reload chan<- struct{}, ra *Raft) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		switch r.Method {
@@ -93,13 +81,12 @@ func checkHandler(reload chan<- struct{}, ra *monitoring.Raft) func(http.Respons
 	}
 }
 
-func clusterHandler(reload chan<- struct{}, ra *monitoring.Raft) func(http.ResponseWriter, *http.Request) {
+func clusterHandler(reload chan<- struct{}, ra *Raft) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case "GET":
-			log.Printf("URL:%+v", r)
 			peers := ra.PeersAPI()
-			leaderAddr := monitoring.ResolveAPIAddr(ra.Leader())
+			leaderAddr := ResolveAPIAddr(ra.Leader())
 			WriteJSON(w, map[string]interface{}{"peers":peers, "leader": leaderAddr})
 		default:
 			w.WriteHeader(http.StatusMethodNotAllowed)
@@ -107,7 +94,7 @@ func clusterHandler(reload chan<- struct{}, ra *monitoring.Raft) func(http.Respo
 	}
 }
 
-func pingHandler(ra *monitoring.Raft) func(http.ResponseWriter, *http.Request) {
+func pingHandler(ra *Raft) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case "GET":
@@ -115,7 +102,7 @@ func pingHandler(ra *monitoring.Raft) func(http.ResponseWriter, *http.Request) {
 			if method == "" {
 				method = "HEAD"
 			}
-			pr, _ := monitoring.PerformCheck(method, r.FormValue("url"))
+			pr, _ := PerformCheck(method, r.FormValue("url"))
 			WriteJSON(w, pr)
 		default:
 			w.WriteHeader(http.StatusMethodNotAllowed)
@@ -123,38 +110,12 @@ func pingHandler(ra *monitoring.Raft) func(http.ResponseWriter, *http.Request) {
 	}
 }
 
-func main() {
-	var leader bool
-	r, err := monitoring.NewRaft(os.Getenv("UPCHECK_PREFIX"), os.Getenv("UPCHECK_ADDR"), strings.Split(os.Getenv("UPCHECK_PEERS"), ","))
-	log.Printf("%+v/%v", r, err)
-	defer r.Close()
-	webhookSched := monitoring.NewWebHookScheduler(r)
-	sched := monitoring.NewScheduler(r, webhookSched)
-	go func() {
-		for isLeader := range r.LeaderCh() {
-			log.Printf("Leader change %v", isLeader)
-			leader = isLeader
-			if leader {
-				go sched.Run()
-				log.Printf("Starting scheduler")
-			} else {
-				sched.Stop()
-				log.Printf("Stopping scheduler")
-			}
-		}
-	}()
-	go func() {
-		<-time.After(RaftWarmUpTime)
-		sched.Reloadch<- struct{}{}
-	}()
-	r2 := mux.NewRouter()
-	r2.HandleFunc("/_cluster", clusterHandler(sched.Reloadch, r))
-	r2.HandleFunc("/_ping", pingHandler(r))
-	r2.HandleFunc("/check", checksHandler(sched.Reloadch, r))
-	r2.HandleFunc("/check/{id}", checkHandler(sched.Reloadch, r))
-	http.Handle("/", r2)
-	http.ListenAndServe(monitoring.ResolveAPIAddr(r.Addr), nil)
-	for {
-		time.Sleep(time.Second)
-	}
+func APIListenAndserve(ra *Raft, sched *Scheduler) error {
+	r := mux.NewRouter()
+	r.HandleFunc("/_cluster", clusterHandler(sched.Reloadch, ra))
+	r.HandleFunc("/_ping", pingHandler(ra))
+	r.HandleFunc("/check", checksHandler(sched.Reloadch, ra))
+	r.HandleFunc("/check/{id}", checkHandler(sched.Reloadch, ra))
+	http.Handle("/", r)
+	return http.ListenAndServe(ResolveAPIAddr(ra.Addr), nil)
 }

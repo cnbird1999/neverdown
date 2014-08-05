@@ -28,6 +28,7 @@ func NewScheduler(raft *Raft, webhookSched *WebHookScheduler) *Scheduler {
 
 // Stop shutdown the Scheduler cleanly.
 func (d *Scheduler) Stop() {
+	log.Println("Stoppping scheduler...")
 	d.webhookSched.Stop()
 	d.stop <- struct{}{}
 }
@@ -48,7 +49,7 @@ func (d *Scheduler) updateChecks() error {
 // Run start the processing of jobs, and listen for config update.
 func (d *Scheduler) Run() {
 	go d.webhookSched.Run()
-	log.Println("Scheduler Run")
+	log.Println("Starting scheduler...")
 	if err := d.updateChecks(); err != nil {
 		panic(err)
 	}
@@ -80,6 +81,7 @@ func (d *Scheduler) Run() {
 						check.LastCheck = check.Next.Unix()
 					}
 					if check.Up != oldStatus {
+						log.Printf("Check %v status changed from %v to %v", check.ID, oldStatus, check.Up)
 						if err := ExecuteWebhooks(d.raft, d.webhookSched, check); err != nil {
 							panic(err)
 						}
@@ -95,7 +97,6 @@ func (d *Scheduler) Run() {
 			d.running = false
 			return
 		case <-d.Reloadch:
-			log.Println("config updated")
 			d.updateChecks()
 		}
 	}

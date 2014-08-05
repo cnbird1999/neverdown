@@ -105,11 +105,12 @@ func PerformAPICheck(peer, method, url string) (*PingResponse, error) {
 // if the website is down for one of the follower, a warning is emitted but the website isn't
 // declared down.
 func LeaderCheck(ra *Raft, check *Check) error {
-	log.Printf("LeaderCheck %+v", check)
+	log.Printf("Checking %v (up:%v/prev:%v)", check.URL, check.Up, check.Prev)
 	pr, err := PerformCheck(check.Method, check.URL)
 	if err != nil {
 		return err
 	}
+	log.Printf("Check result: %+v", pr)
 	if pr.Up {
 		check.Up = true
 		return nil
@@ -128,7 +129,6 @@ func LeaderCheck(ra *Raft, check *Check) error {
 		}
 		prs = append(prs, ppr)
 	}
-	log.Printf("Ping results for nodes: %+v", prs)
 	check.Up = false
 	check.LastDown = time.Now().UTC().Unix()
 	check.LastError = pr.Error

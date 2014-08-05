@@ -200,7 +200,6 @@ func (r *Raft) Peers() ([]net.Addr, error) {
 
 // PeersAPI returns the HTTP JSON API endpoints of every nodes in the raft cluster.
 func (r *Raft) PeersAPI() []string {
-	fmt.Printf("PeersAPI")
 	addrs, _ := r.Peers()
 	peers := []string{}
 	leaderAddr := ResolveAPIAddr(r.Leader())

@@ -17,7 +17,7 @@ var WebHookMaxRetry = 20
 // if a webhook fail, it will be addedt to the pending webhook and will
 // be managed by the WebHookScheduler.
 func ExecuteWebhooks(ra *Raft, whSched *WebHookScheduler, check *Check) error {
-	log.Println("ExecuteWebhooks")
+	log.Println("executing WebHooks for check %v", check.ID)
 	errc := make(chan error)
 	payload, err := json.Marshal(check)
 	if err != nil {
@@ -53,7 +53,7 @@ func ExecuteWebhooks(ra *Raft, whSched *WebHookScheduler, check *Check) error {
 // ExecuteWebhook executes a single webhook (POST request to the given url,
 // with the given payload).
 func ExecuteWebhook(ra *Raft, payload []byte, url string) error {
-	log.Printf("ExecuteWebhook %v: %v", string(payload), url)
+	log.Printf("Execute WebHook %v: %v", string(payload), url)
 	var body bytes.Buffer
 	body.Write(payload)
 	req, err := http.NewRequest("POST", url, &body)
@@ -158,7 +158,6 @@ func (d *WebHookScheduler) Run() {
 			d.running = false
 			return
 		case <-d.Reloadch:
-			log.Println("config updated")
 			if err := d.update(); err != nil {
 				panic(err)
 			}
