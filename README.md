@@ -52,7 +52,11 @@ $ curl http://localhost:7990/check
 
 Create/update a check (if you POST a check with an existing id, it will replace the existing check).
 
-You can specify an custom id, if no id is specified, a random UUID will be generated.
+You can specify an custom **id**, if no id is specified, a random UUID will be generated.
+
+**HEAD** is the default **method**, but you can specify any HTTP method.
+
+The default **interval** is 60 seconds.
 
 ```console
 $ curl -XPOST http://localhost:7990/check -d '{"id": "trucsdedev", "interval": 60, "url": "http://trucsdedev.com", "webhooks":["http://requestb.in/18myl7y1"]}'
@@ -89,6 +93,49 @@ Delete a check.
 
 ```console
 $ curl -XDELETE http://localhost:7990/check/trucsdedev
+```
+
+### GET /pending
+
+List all pending webhooks.
+
+```console
+$ curl http://localhost:7990/pending
+{
+    "pending": [
+        {
+            "id": "c2cc7440-75b8-4e61-9608-b68f39c58013",
+            "url": "http://trucsdedev.com",
+            "payload": "eyJpZCI6Im[...]Y3NkZWRldi5jb20iXX0=",
+            "tries": 5,
+            "first_try": 1407262636
+        }
+    ]
+}
+```
+
+
+### GET /pending/{id}
+
+Retrieve a pending webhook.
+
+```console
+$ curl http://localhost:7990/pending/c2cc7440-75b8-4e61-9608-b68f39c58013
+{
+    "id": "c2cc7440-75b8-4e61-9608-b68f39c58013",
+    "url": "http://trucsdedev.com",
+    "payload": "eyJpZCI6ImJsb[...]Rldi5jb20iXX0=",
+    "tries": 7,
+    "first_try": 1407262636
+}
+```
+
+### DELETE /pending/{id}
+
+Force the delete of a pending WebHook.
+
+```console
+$ curl -XDELETE http://localhost:7990/pending/trucsdedev
 ```
 
 ### GET /_ping

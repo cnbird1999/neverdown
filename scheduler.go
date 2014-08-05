@@ -35,6 +35,7 @@ func (d *Scheduler) Stop() {
 
 // Reload will recompute the next execution time of every checks.
 func (d *Scheduler) Reload() {
+	d.webhookSched.Reload()
 	d.Reloadch <- struct{}{}
 }
 

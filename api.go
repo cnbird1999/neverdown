@@ -79,6 +79,56 @@ func checksHandler(reload chan<- struct{}, ra *Raft) func(http.ResponseWriter, *
 	}
 }
 
+func pendingHandler(ra *Raft) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case "GET":
+			if err := ra.Sync(); err != nil {
+				panic(err)
+			}
+			res := map[string][]*WebHook{
+				"pending": []*WebHook{},
+			}
+			for _, wh := range ra.Store.PendingWebHooksIndex {
+				res["pending"] = append(res["pending"], wh)
+			}
+			WriteJSON(w, res)
+		default:
+			w.WriteHeader(http.StatusMethodNotAllowed)
+		}
+	}
+}
+
+func pendingByIDHandler(reload chan<- struct{}, ra *Raft) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		switch r.Method {
+		case "GET":
+			if err := ra.Sync(); err != nil {
+				panic(err)
+			}
+			wh, exists := ra.Store.PendingWebHooksIndex[vars["id"]]
+			if exists {
+				WriteJSON(w, wh)
+			} else {
+				http.Error(w, http.StatusText(404), 404)
+			}
+		case "DELETE":
+			id := []byte(vars["id"])
+			msg := make([]byte, len(id)+1)
+			msg[0] = 3
+			copy(msg[1:], id)
+			if err := ra.ExecCommand(msg); err != nil {
+				panic(err)
+			}
+			reload<- struct{}{}
+		default:
+			w.WriteHeader(http.StatusMethodNotAllowed)
+		}
+	}
+}
+
+
 func checkHandler(reload chan<- struct{}, ra *Raft) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
@@ -144,6 +194,8 @@ func APIListenAndserve(leader *bool, ra *Raft, sched *Scheduler) error {
 	r.HandleFunc("/_ping", pingHandler(ra))
 	r.HandleFunc("/check", RedirectToLeader(leader, ra, checksHandler(sched.Reloadch, ra)))
 	r.HandleFunc("/check/{id}", RedirectToLeader(leader, ra, checkHandler(sched.Reloadch, ra)))
+	r.HandleFunc("/pending", RedirectToLeader(leader, ra, pendingHandler(ra)))
+	r.HandleFunc("/pending/{id}", RedirectToLeader(leader, ra, pendingByIDHandler(sched.Reloadch, ra)))
 	http.Handle("/", r)
 	return http.ListenAndServe(ResolveAPIAddr(ra.Addr), nil)
 }

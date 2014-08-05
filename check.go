@@ -95,9 +95,9 @@ func PerformCheck(method, url string) (*PingResponse, error) {
 
 // PerformAPICheck query the ping api of the given remote peer for the given URL.
 func PerformAPICheck(peer, method, url string) (*PingResponse, error) {
-	log.Printf("Calling %v...", url)
+	log.Printf("Calling %v for %v...", peer, url)
 	pingResponse := &PingResponse{}
-	request, err := http.NewRequest("GET", peer+"?method="+method+"&url="+url, nil)
+	request, err := http.NewRequest("GET", "http://localhost"+peer+"/_ping?method="+method+"&url="+url, nil)
 	if err != nil {
 		return nil, err
 	}
