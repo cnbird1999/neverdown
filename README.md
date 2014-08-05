@@ -10,6 +10,15 @@ Distributed website monitoring system that triggers WebHooks when a website stat
 
 ## API endpoints
 
+You can query any server, query will automatically be redirected to the leader, just ensure you are following redirections.
+
+```console
+$ curl -L http://localhost:4990/check
+{"checks":[]}
+```
+
+Endpoints with the **_** prefix, like _ping, are special node endpoints and are not redirected to the leader.
+
 ### GET /check
 
 ```console
@@ -181,7 +190,6 @@ $ UPCHECK_ADDR=:8000 UPCHECK_PREFIX=ok UPCHECK_PEERS=:8000,:8001,:8002 ./neverdo
 
 ## TODO
 
-- Leader redirection for the HTTP API
 - Handle more error type and provides more user-friendly error message
 
 ## License

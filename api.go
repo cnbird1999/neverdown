@@ -2,8 +2,10 @@ package neverdown
 
 import (
 	"net/http"
+	"net"
 	"log"
 	"encoding/json"
+	"strconv"
 
 	"github.com/gorilla/mux"
 )
@@ -16,6 +18,24 @@ func WriteJSON(w http.ResponseWriter, data interface{}) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(js)
+}
+
+// RedirectToLeader redirects the request to the leader if needed.
+func RedirectToLeader(leader *bool, ra *Raft, handlerFunc http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if *leader {
+			handlerFunc.ServeHTTP(w, r)
+		} else {
+			hostname := "localhost"
+			bhostname := ra.Leader().(*net.TCPAddr).IP
+			if bhostname != nil {
+				hostname = string(bhostname)
+			}
+			redirectTo := "http://"+hostname+":"+strconv.Itoa(ra.Leader().(*net.TCPAddr).Port-10)+r.URL.Path
+			log.Printf("Redirect request to leader: %v", redirectTo)
+			http.Redirect(w, r, redirectTo, http.StatusTemporaryRedirect)
+		}
+	}
 }
 
 func checksHandler(reload chan<- struct{}, ra *Raft) func(http.ResponseWriter, *http.Request) {
@@ -118,12 +138,12 @@ func pingHandler(ra *Raft) func(http.ResponseWriter, *http.Request) {
 	}
 }
 
-func APIListenAndserve(ra *Raft, sched *Scheduler) error {
+func APIListenAndserve(leader *bool, ra *Raft, sched *Scheduler) error {
 	r := mux.NewRouter()
 	r.HandleFunc("/_cluster", clusterHandler(sched.Reloadch, ra))
 	r.HandleFunc("/_ping", pingHandler(ra))
-	r.HandleFunc("/check", checksHandler(sched.Reloadch, ra))
-	r.HandleFunc("/check/{id}", checkHandler(sched.Reloadch, ra))
+	r.HandleFunc("/check", RedirectToLeader(leader, ra, checksHandler(sched.Reloadch, ra)))
+	r.HandleFunc("/check/{id}", RedirectToLeader(leader, ra, checkHandler(sched.Reloadch, ra)))
 	http.Handle("/", r)
 	return http.ListenAndServe(ResolveAPIAddr(ra.Addr), nil)
 }

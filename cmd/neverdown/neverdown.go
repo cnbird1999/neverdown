@@ -18,6 +18,7 @@ var (
 func main() {
 	log.Printf("Starting neverdown version %v+%v; %v (%v/%v)", neverdown.Version, githash, runtime.Version(), runtime.GOOS, runtime.GOARCH)
 	leader := new(bool)
+	log.Printf("Listening on %v", os.Getenv("UPCHECK_ADDR"))
 	r, err := neverdown.NewRaft(os.Getenv("UPCHECK_PREFIX"), os.Getenv("UPCHECK_ADDR"), strings.Split(os.Getenv("UPCHECK_PEERS"), ","))
 	if err != nil {
 		panic(err)
@@ -41,5 +42,5 @@ func main() {
 		<-time.After(RaftWarmUpTime)
 		sched.Reloadch<- struct{}{}
 	}()
-	log.Fatal(neverdown.APIListenAndserve(r, sched))
+	log.Fatal(neverdown.APIListenAndserve(leader, r, sched))
 }
