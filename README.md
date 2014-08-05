@@ -10,16 +10,18 @@ Distributed website monitoring system that triggers WebHooks when a website stat
 
 ## API endpoints
 
-You can query any server, query will automatically be redirected to the leader, just ensure you are following redirections.
+You can query any server, query will automatically be redirected to the leader, just ensure you are following redirections (e.g. the ``-L`` flag using ``curl``.
 
 ```console
-$ curl -L http://localhost:4990/check
+$ curl -L http://localhost:7990/check
 {"checks":[]}
 ```
 
 Endpoints with the **_** prefix, like _ping, are special node endpoints and are not redirected to the leader.
 
 ### GET /check
+
+List all checks.
 
 ```console
 $ curl http://localhost:7990/check
@@ -48,6 +50,8 @@ $ curl http://localhost:7990/check
 
 ### POST /check
 
+Create/update a check (if you POST a check with an existing id, it will replace the existing check).
+
 You can specify an custom id, if no id is specified, a random UUID will be generated.
 
 ```console
@@ -55,6 +59,8 @@ $ curl -XPOST http://localhost:7990/check -d '{"id": "trucsdedev", "interval": 6
 ```
 
 ### GET /check/{id}
+
+Retrieve a single check by id.
 
 ```console
 $ curl http://localhost:7990/check/trucsdedev
@@ -78,6 +84,8 @@ $ curl http://localhost:7990/check/trucsdedev
 ```
 
 ### DELETE /check/{id}
+
+Delete a check.
 
 ```console
 $ curl -XDELETE http://localhost:7990/check/trucsdedev
