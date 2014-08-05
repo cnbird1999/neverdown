@@ -143,7 +143,15 @@ if a webhook is not received, it will be retried up to 20 times (with exponentia
 - **server**
 - **unknow**
 
-## Deploying with Docker
+## Docker
+
+Building the Docker image:
+
+```console
+$ make docker
+```
+
+### Deploying with Docker
 
 A [Dockerfile](.docker/Dockerfile) is available.
 
