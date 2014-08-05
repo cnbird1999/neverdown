@@ -40,6 +40,7 @@ func PerformCheck(method, url string) (*PingResponse, error) {
 	}
 	resp, err := client.Do(request)
 	if err != nil {
+		log.Printf("ERR:%+v", err)
 		nerr, ok := err.(*nurl.Error)
 		if ok {
 			switch err := nerr.Err.(type) {
@@ -50,15 +51,18 @@ func PerformCheck(method, url string) (*PingResponse, error) {
 					errs := strings.Split(err.Error(), ": ")
 					pr.Error.Error = errs[len(errs)-1]
 				default:
-					pr.Error.Type = "unknow"
+					fmt.Printf("U%+v", err)
+					pr.Error.Type = "unknow1"
 					pr.Error.Error = err.Error()
 				}
 			default:
-				pr.Error.Type = "unknow"
+				fmt.Printf("U2%+v", err)
+				pr.Error.Type = "unknow2"
 				pr.Error.Error = err.Error()
 			}
 		} else {
-			pr.Error.Type = "unknow"
+			fmt.Printf("U3%+v", err)
+			pr.Error.Type = "unknow3"
 			pr.Error.Error = err.Error()
 		}
 		return pr, nil

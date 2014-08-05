@@ -3,6 +3,7 @@ package neverdown
 import (
 	"net/http"
 	"io/ioutil"
+	"log"
 	"encoding/json"
 
 	"github.com/gorilla/mux"
@@ -38,9 +39,20 @@ func checksHandler(reload chan<- struct{}, ra *Raft) func(http.ResponseWriter, *
 				panic(err)
 			}
 			defer r.Body.Close()
-			msg := make([]byte, len(data)+1)
+			check := NewCheck()
+			if err := json.Unmarshal(data[1:], check); err != nil {
+				panic(err)
+			}
+			if check.ID == "" {
+				check.ID = uuid()
+			}
+			js, err := json.Marshal(check)
+			if err != nil {
+				panic(err)
+			}
+			msg := make([]byte, len(js)+1)
 			msg[0] = 0
-			copy(msg[1:], data)
+			copy(msg[1:], js)
 			if err := ra.ExecCommand(msg); err != nil {
 				panic(err)
 			}
@@ -103,6 +115,7 @@ func pingHandler(ra *Raft) func(http.ResponseWriter, *http.Request) {
 				method = "HEAD"
 			}
 			pr, _ := PerformCheck(method, r.FormValue("url"))
+			log.Printf("PING:%+v", pr)
 			WriteJSON(w, pr)
 		default:
 			w.WriteHeader(http.StatusMethodNotAllowed)
