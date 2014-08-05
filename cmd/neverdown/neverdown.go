@@ -5,13 +5,18 @@ import (
 	"os"
 	"strings"
 	"time"
+	"runtime"
 
 	"github.com/tsileo/neverdown"
 )
 
-var RaftWarmUpTime = 5*time.Second
+var (
+    githash string = ""
+	RaftWarmUpTime = 5*time.Second
+)
 
 func main() {
+	log.Printf("Starting neverdown version %v+%v; %v (%v/%v)", neverdown.Version, githash, runtime.Version(), runtime.GOOS, runtime.GOARCH)
 	leader := new(bool)
 	r, err := neverdown.NewRaft(os.Getenv("UPCHECK_PREFIX"), os.Getenv("UPCHECK_ADDR"), strings.Split(os.Getenv("UPCHECK_PEERS"), ","))
 	if err != nil {
