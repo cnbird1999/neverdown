@@ -6,22 +6,23 @@ import (
 	"time"
 )
 
+// Scheduler schedule checks, it also manage the WebHookScheduler.
 type Scheduler struct {
-	raft *Raft
+	raft         *Raft
 	webhookSched *WebHookScheduler
-	stop    chan struct{}
-	Reloadch chan struct{}
-	running bool
-	checks    []*Check
+	stop         chan struct{}
+	Reloadch     chan struct{}
+	running      bool
+	checks       []*Check
 }
 
 // NewScheduler initialize a new empty Scheduler.
 func NewScheduler(raft *Raft, webhookSched *WebHookScheduler) *Scheduler {
 	return &Scheduler{
-		raft: raft,
+		raft:         raft,
 		webhookSched: webhookSched,
-		stop: make(chan struct{}),
-		Reloadch: make(chan struct{}),
+		stop:         make(chan struct{}),
+		Reloadch:     make(chan struct{}),
 	}
 }
 

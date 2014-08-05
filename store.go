@@ -1,34 +1,39 @@
+/*
+
+Store is the raft Finite State Machine (FSM).
+
+*/
 package neverdown
 
 import (
-	"fmt"
 	"crypto/rand"
 	"encoding/json"
-	"sync"
-	"math"
-	"time"
+	"fmt"
 	"io"
+	"math"
+	"sync"
+	"time"
 )
 
 func uuid() string {
-    b := make([]byte, 16)
-    rand.Read(b)
-    b[6] = (b[6] & 0x0f) | 0x40
-    b[8] = (b[8] & 0x3f) | 0x80
-    return fmt.Sprintf("%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:])
+	b := make([]byte, 16)
+	rand.Read(b)
+	b[6] = (b[6] & 0x0f) | 0x40
+	b[8] = (b[8] & 0x3f) | 0x80
+	return fmt.Sprintf("%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:])
 }
 
 // Store holds active checks, and pending WebHook notifications.
 type Store struct {
-	ChecksIndex map[string]*Check
+	ChecksIndex          map[string]*Check
 	PendingWebHooksIndex map[string]*WebHook
-	mu sync.Mutex
+	mu                   sync.Mutex
 }
 
 // NewStore initialize an empty Store
 func NewStore() *Store {
 	return &Store{
-		ChecksIndex: map[string]*Check{},
+		ChecksIndex:          map[string]*Check{},
 		PendingWebHooksIndex: map[string]*WebHook{},
 	}
 }
@@ -46,14 +51,14 @@ func (s *Store) JSON() ([]byte, error) {
 		pendingWebhooks = append(pendingWebhooks, wh)
 	}
 	data := map[string]interface{}{
-		"checks": checks,
+		"checks":           checks,
 		"pending_webhooks": pendingWebhooks,
 	}
 	return json.Marshal(&data)
 }
 
 type JSONStore struct {
-	Checks []*Check `json:"checks"`
+	Checks          []*Check   `json:"checks"`
 	PendingWebHooks []*WebHook `json:"pending_webhooks"`
 }
 
@@ -74,7 +79,7 @@ func (s *Store) FromJSON(r io.Reader) error {
 	return nil
 }
 
-// ExecCommand decode a Raft log entry (cmdType byte + JSON encoded payload)
+// ExecCommand decode a FSM transition/Raft log entry (cmdType byte + JSON encoded payload)
 func (s *Store) ExecCommand(data []byte) error {
 	cmdType := data[0]
 	switch cmdType {
@@ -109,15 +114,15 @@ func (s *Store) ExecCommand(data []byte) error {
 
 // Check represent an active monitoring check
 type Check struct {
-	ID string `json:"id"`
-	URL string `json:"url"`
-	Method string `json:"method"`
-	LastCheck int64 `json:"last_check"`
+	ID        string      `json:"id"`
+	URL       string      `json:"url"`
+	Method    string      `json:"method"`
+	LastCheck int64       `json:"last_check"`
 	LastError interface{} `json:"last_error"`
-	Up bool `json:"up"`
-	LastDown int64 `json:"last_down"`
-	Interval int `json:"interval"`
-	WebHooks []string `json:"webhooks"`
+	Up        bool        `json:"up"`
+	LastDown  int64       `json:"last_down"`
+	Interval  int         `json:"interval"`
+	WebHooks  []string    `json:"webhooks"`
 
 	Prev time.Time `json:"-"`
 	Next time.Time `json:"-"`
@@ -126,19 +131,19 @@ type Check struct {
 // NewCheck initialize an empty Check, generates an ID.
 func NewCheck() *Check {
 	return &Check{
-		Prev: time.Time{},
-		Next: time.Time{},
+		Prev:     time.Time{},
+		Next:     time.Time{},
 		WebHooks: []string{},
-		Method: "HEAD",
+		Method:   "HEAD",
 		Interval: 60, // 60 seconds resolution between checks if no interval is provided.
-		Up: true,
+		Up:       true,
 	}
 }
 
 // ComputeNext computes the next check execution time
 func (c *Check) ComputeNext(now time.Time) {
 	elapsed := now.Sub(c.Next)
-	delay := time.Duration(c.Interval)*time.Second
+	delay := time.Duration(c.Interval) * time.Second
 	if elapsed > 0 {
 		if c.Next.IsZero() {
 			c.Next = now.Add(delay)
@@ -149,7 +154,7 @@ func (c *Check) ComputeNext(now time.Time) {
 	return
 }
 
-// ToPostCmd serializes a Check into a raft POST command
+// ToPostCmd serializes a Check into a raft transition (POST command).
 func (c *Check) ToPostCmd() []byte {
 	js, err := json.Marshal(c)
 	if err != nil {
@@ -178,7 +183,6 @@ func (s byTime) Less(i, j int) bool {
 	return s[i].Next.Before(s[j].Next)
 }
 
-
 type webhookByTime []*WebHook
 
 func (s webhookByTime) Len() int      { return len(s) }
@@ -198,12 +202,12 @@ func (s webhookByTime) Less(i, j int) bool {
 
 // WebHook represent a waiting webhook notification that hasn't been successfully executed.
 type WebHook struct {
-	ID string `json:"id"`
-	URL string `json:"url"`
-	Payload []byte `json:"payload"`
-	Tries int `json:"tries"`
-	FirstTry int64 `json:"first_try"`
-	Next time.Time `json:"-"`
+	ID       string    `json:"id"`
+	URL      string    `json:"url"`
+	Payload  []byte    `json:"payload"`
+	Tries    int       `json:"tries"`
+	FirstTry int64     `json:"first_try"`
+	Next     time.Time `json:"-"`
 }
 
 // NewWebHook initialize an empty WebHook.
@@ -217,7 +221,7 @@ func NewWebHook() *WebHook {
 func (wh *WebHook) ComputeNext(now time.Time) {
 	elapsed := now.Sub(wh.Next)
 	// Exponential backoff retry
-	delay := time.Duration(math.Pow(float64(2), float64(wh.Tries))/2)*time.Second
+	delay := time.Duration(math.Pow(float64(2), float64(wh.Tries))/2) * time.Second
 	if elapsed > 0 {
 		if wh.Next.IsZero() {
 			wh.Next = now.Add(delay)

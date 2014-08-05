@@ -1,14 +1,14 @@
 package neverdown
 
 import (
+	"fmt"
 	"io"
+	"log"
 	"net"
 	"os"
-	"fmt"
 	"path"
-	"time"
-	"log"
 	"strconv"
+	"time"
 
 	"github.com/hashicorp/raft"
 	"github.com/hashicorp/raft-mdb"
@@ -59,7 +59,6 @@ func (fsm *FSM) Restore(snap io.ReadCloser) error {
 
 type Snapshot struct {
 	Data []byte
-
 }
 
 // Persist writes a snapshot to a file. We just serialize all active entries.
@@ -78,8 +77,8 @@ func (s *Snapshot) Release() {
 
 // Raft encapsulates the raft specific logic for startup and shutdown.
 type Raft struct {
-	Addr net.Addr
-	Store *Store
+	Addr      net.Addr
+	Store     *Store
 	transport *raft.NetworkTransport
 	mdb       *raftmdb.MDBStore
 	raft      *raft.Raft
@@ -191,7 +190,7 @@ func ResolveAPIAddr(addr net.Addr) string {
 	if tcpAddr.IP != nil {
 		ip = tcpAddr.IP.String()
 	}
-	return ip+":"+strconv.Itoa(tcpAddr.Port-10)
+	return ip + ":" + strconv.Itoa(tcpAddr.Port-10)
 }
 
 // Peers returns the address of every nodes in the raft cluster.
@@ -200,7 +199,7 @@ func (r *Raft) Peers() ([]net.Addr, error) {
 }
 
 // PeersAPI returns the HTTP JSON API endpoints of every nodes in the raft cluster.
-func (r *Raft) PeersAPI() ([]string) {
+func (r *Raft) PeersAPI() []string {
 	fmt.Printf("PeersAPI")
 	addrs, _ := r.Peers()
 	peers := []string{}

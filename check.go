@@ -1,29 +1,29 @@
 package neverdown
 
 import (
-	"log"
-	nurl "net/url"
-	"net"
-	"net/http"
 	"encoding/json"
 	"fmt"
-	"strings"
 	"io/ioutil"
+	"log"
+	"net"
+	"net/http"
+	nurl "net/url"
+	"strings"
 	"time"
 )
 
 var client = &http.Client{
-	Timeout: 10*time.Second,
+	Timeout: 10 * time.Second,
 }
 
 // PingResponse is the results of a check PING
 type PingResponse struct {
-	URL string `json:"url"`
-	Up bool `json:"up"`
+	URL   string `json:"url"`
+	Up    bool   `json:"up"`
 	Error struct {
-		StatusCode int `json:"status_code"`
-		Type string `json:"type"`
-		Error string `json:"error"`
+		StatusCode int    `json:"status_code"`
+		Type       string `json:"type"`
+		Error      string `json:"error"`
 	} `json:"error"`
 }
 
@@ -95,7 +95,7 @@ func PerformAPICheck(peer, method, url string) (*PingResponse, error) {
 		return nil, fmt.Errorf("ping request failed %v", resp)
 	}
 	if err := json.NewDecoder(resp.Body).Decode(pingResponse); err != nil {
-		return nil,  err
+		return nil, err
 	}
 	return pingResponse, nil
 }

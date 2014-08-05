@@ -1,18 +1,21 @@
 package neverdown
 
 import (
-	"log"
-	"net/http"
+	"bytes"
 	"encoding/json"
 	"fmt"
-	"time"
-	"bytes"
-	"sort"
 	"io/ioutil"
+	"log"
+	"net/http"
+	"sort"
+	"time"
 )
 
 var WebHookMaxRetry = 20
 
+// ExecuteWebhooks try to execute all webhooks for a given check,
+// if a webhook fail, it will be addedt to the pending webhook and will
+// be managed by the WebHookScheduler.
 func ExecuteWebhooks(ra *Raft, whSched *WebHookScheduler, check *Check) error {
 	log.Println("ExecuteWebhooks")
 	errc := make(chan error)
@@ -25,14 +28,14 @@ func ExecuteWebhooks(ra *Raft, whSched *WebHookScheduler, check *Check) error {
 			if err := ExecuteWebhook(ra, payload, url); err != nil {
 				log.Printf("Failed to execute webhook %v for check %v: %v", url, check.ID, err)
 				wh := &WebHook{
-					ID: uuid(),
-					URL: url,
-					Payload: payload,
-					Tries: 1,
+					ID:       uuid(),
+					URL:      url,
+					Payload:  payload,
+					Tries:    1,
 					FirstTry: time.Now().UTC().Unix(),
 				}
 				if err := ra.ExecCommand(wh.ToPostCmd()); err != nil {
-					errc<- err
+					errc <- err
 				}
 				ra.Sync()
 				whSched.Reload()
@@ -47,6 +50,8 @@ func ExecuteWebhooks(ra *Raft, whSched *WebHookScheduler, check *Check) error {
 	return nil
 }
 
+// ExecuteWebhook executes a single webhook (POST request to the given url,
+// with the given payload).
 func ExecuteWebhook(ra *Raft, payload []byte, url string) error {
 	log.Printf("ExecuteWebhook %v: %v", string(payload), url)
 	var body bytes.Buffer
@@ -67,20 +72,20 @@ func ExecuteWebhook(ra *Raft, payload []byte, url string) error {
 	return nil
 }
 
-
+// WebHookScheduler manages the retries of pending WebHooks.
 type WebHookScheduler struct {
-	raft *Raft
-	stop    chan struct{}
-	Reloadch chan struct{}
-	running bool
-	pendingWebHooks    []*WebHook
+	raft            *Raft
+	stop            chan struct{}
+	Reloadch        chan struct{}
+	running         bool
+	pendingWebHooks []*WebHook
 }
 
 // NewScheduler initialize a new empty Scheduler.
 func NewWebHookScheduler(raft *Raft) *WebHookScheduler {
 	return &WebHookScheduler{
-		raft: raft,
-		stop: make(chan struct{}),
+		raft:     raft,
+		stop:     make(chan struct{}),
 		Reloadch: make(chan struct{}),
 	}
 }
@@ -98,6 +103,7 @@ func (d *WebHookScheduler) Reload() {
 	d.Reloadch <- struct{}{}
 }
 
+// update the pendingWebHooks slicde from the FSM PendingWebHooksIndex.
 func (d *WebHookScheduler) update() error {
 	d.pendingWebHooks = []*WebHook{}
 	for _, wh := range d.raft.Store.PendingWebHooksIndex {
@@ -106,7 +112,7 @@ func (d *WebHookScheduler) update() error {
 	return nil
 }
 
-// Run start the processing of jobs, and listen for config update.
+// Run start the processing of webhooks, and listen for config update.
 func (d *WebHookScheduler) Run() {
 	if err := d.update(); err != nil {
 		panic(err)
@@ -128,7 +134,7 @@ func (d *WebHookScheduler) Run() {
 				if now.Sub(wh.Next) < 0 {
 					break
 				}
-				log.Printf("Retrying webhook %+v (tries:%v)", wh, wh.Tries)
+				log.Printf("Retrying webhook %v/%v (tries:%v)", wh.ID, wh.URL, wh.Tries)
 				err := ExecuteWebhook(d.raft, wh.Payload, wh.URL)
 				if err != nil || wh.Tries == WebHookMaxRetry {
 					wh.Tries++
