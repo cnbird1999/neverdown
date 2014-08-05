@@ -138,10 +138,10 @@ if a webhook is not received, it will be retried up to 20 times (with exponentia
 
 ### Error type
 
-- **timeout**
-- **dns**
-- **server**
-- **unknow**
+- **timeout**: the 10 seconds timeout has been exceeded while loading the page.
+- **dns**: there is a DNS issue.
+- **server**: server issue, refers to the status code and the error returned by the server.
+- **unknown**: unknown or not handled yet issue.
 
 ## Docker
 
@@ -182,6 +182,7 @@ $ UPCHECK_ADDR=:8000 UPCHECK_PREFIX=ok UPCHECK_PEERS=:8000,:8001,:8002 ./neverdo
 ## TODO
 
 - Leader redirection for the HTTP API
+- Handle more error type and provides more user-friendly error message
 
 ## License
 

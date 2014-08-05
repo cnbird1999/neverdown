@@ -27,8 +27,8 @@ type PingResponse struct {
 	} `json:"error"`
 }
 
-func LogUnknowError(lvl string, err, baseErr error) {
-	log.Printf(`INFO: unknow error at lvl %v "%+v", (base:%+v),
+func LogUnknownError(lvl string, err, baseErr error) {
+	log.Printf(`INFO: unknown error at lvl %v "%+v", (base:%+v),
 Please open an issue in the GitHub repository at https://github.com/tsileo/neverdown.`, lvl, err, baseErr)
 }
 
@@ -55,25 +55,25 @@ func PerformCheck(method, url string) (*PingResponse, error) {
 					errs := strings.Split(cerr.Error(), ": ")
 					pr.Error.Error = errs[len(errs)-1]
 				default:
-					LogUnknowError("2", cerr, nerr)
-					pr.Error.Type = "timeout"
+					LogUnknownError("2", cerr, nerr)
+					pr.Error.Type = "unknown"
 					pr.Error.Error = err.Error()
 				}
 			default:
 				switch nerr.Err.Error() {
 				case "net/http: request canceled while waiting for connection":
 					pr.Error.Type = "timeout"
-					pr.Error.Error = "timeout"
+					pr.Error.Error = "timeout exceeded"
 				default:
-					LogUnknowError("1", cerr, nerr)
-					pr.Error.Type = "unknow"
+					LogUnknownError("1", cerr, nerr)
+					pr.Error.Type = "unknown"
 					errs := strings.Split(cerr.Error(), ": ")
 					pr.Error.Error = errs[len(errs)-1]
 				}
 			}
 		} else {
-			LogUnknowError("0", err, nil)
-			pr.Error.Type = "unknow"
+			LogUnknownError("0", err, nil)
+			pr.Error.Type = "unknown"
 			pr.Error.Error = err.Error()
 		}
 		return pr, nil
