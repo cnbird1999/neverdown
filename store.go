@@ -90,6 +90,8 @@ func (s *Store) ExecCommand(data []byte) error {
 		}
 		if check.WebHooks == nil {
 			check.WebHooks = []string{}
+		}
+		if check.LastCheck != 0 {
 			check.Prev = time.Unix(check.LastCheck, 0).UTC()
 		}
 		s.ChecksIndex[check.ID] = check

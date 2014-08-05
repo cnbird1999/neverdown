@@ -73,7 +73,9 @@ func (d *Scheduler) Run() {
 				if now.Sub(check.Next) < 0 {
 					break
 				}
-				check.Prev = check.Next
+				if !check.Next.IsZero() {
+					check.Prev = check.Next
+				}
 				go func(check *Check) {
 					oldStatus := check.Up
 					LeaderCheck(d.raft, check)
