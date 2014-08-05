@@ -93,6 +93,8 @@ $ curl -XDELETE http://localhost:7990/check/trucsdedev
 
 ### GET /_ping
 
+Special endpoints used by the leader to query followers.
+
 ```console
 $ curl http://localhost:7990/_ping\?url\=http://trucsdedev.com
 {
@@ -117,6 +119,8 @@ $ curl http://localhost:7990/_ping\?url\=http://google.com
 ```
 
 ### GET /_cluster
+
+Fetch cluster infos.
 
 ```console
 $ curl http://localhost:7990/_cluster
@@ -162,7 +166,7 @@ if a webhook is not received, it will be retried up to 20 times (with exponentia
 
 ## Docker
 
-Building the Docker image:
+A [Dockerfile](.docker/Dockerfile) is available, you can easily build the Docker image:
 
 ```console
 $ make docker
@@ -170,13 +174,9 @@ $ make docker
 
 ### Deploying with Docker
 
-A [Dockerfile](.docker/Dockerfile) is available.
-
-**Image not pushed on the docker hub yet.**
-
 ```console
 $ sudo docker pull neverdown/neverdown
-$ sudo docker run -p 8000:8000 -p 7000:7000 -v /tmp/neverdown_data/:/data/neverdown -e UPCHECK_PEERS=host1:8000,host2:8000;host3:8000 -t neverdown/neverdown
+$ sudo docker run -p 8001:8000 -p 7990:7990 -e UPCHECK_PEERS=:8000,:8001 -t neverdown/neverdown
 ```
 ## Security
 
