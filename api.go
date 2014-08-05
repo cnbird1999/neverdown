@@ -2,7 +2,6 @@ package neverdown
 
 import (
 	"net/http"
-	"io/ioutil"
 	"log"
 	"encoding/json"
 
@@ -34,13 +33,9 @@ func checksHandler(reload chan<- struct{}, ra *Raft) func(http.ResponseWriter, *
 			}
 			WriteJSON(w, res)
 		case "POST":
-			data, err := ioutil.ReadAll(r.Body)
-			if err != nil {
-				panic(err)
-			}
 			defer r.Body.Close()
 			check := NewCheck()
-			if err := json.Unmarshal(data[1:], check); err != nil {
+			if err := json.NewDecoder(r.Body).Decode(check); err != nil {
 				panic(err)
 			}
 			if check.ID == "" {
@@ -115,7 +110,7 @@ func pingHandler(ra *Raft) func(http.ResponseWriter, *http.Request) {
 				method = "HEAD"
 			}
 			pr, _ := PerformCheck(method, r.FormValue("url"))
-			log.Printf("PING:%+v", pr)
+			log.Printf("local /_ping request: %+v", pr)
 			WriteJSON(w, pr)
 		default:
 			w.WriteHeader(http.StatusMethodNotAllowed)
