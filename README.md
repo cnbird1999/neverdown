@@ -135,7 +135,7 @@ $ curl http://localhost:7990/pending/c2cc7440-75b8-4e61-9608-b68f39c58013
 Force the delete of a pending WebHook.
 
 ```console
-$ curl -XDELETE http://localhost:7990/pending/trucsdedev
+$ curl -XDELETE http://localhost:7990/pending/c2cc7440-75b8-4e61-9608-b68f39c58013
 ```
 
 ### GET /_ping
@@ -218,6 +218,8 @@ A [Dockerfile](.docker/Dockerfile) is available, you can easily build the Docker
 ```console
 $ make docker
 ```
+
+You can also get it on via the [Docker Hub](https://registry.hub.docker.com/u/neverdown/neverdown/).
 
 ### Deploying with Docker
 

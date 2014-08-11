@@ -95,9 +95,9 @@ func PerformCheck(method, url string) (*PingResponse, error) {
 
 // PerformAPICheck query the ping api of the given remote peer for the given URL.
 func PerformAPICheck(peer, method, url string) (*PingResponse, error) {
-	log.Printf("Calling %v for %v...", peer, url)
+	log.Printf("Calling remote peer %v for confirmation on %v...", peer, url)
 	pingResponse := &PingResponse{}
-	request, err := http.NewRequest("GET", "http://localhost"+peer+"/_ping?method="+method+"&url="+url, nil)
+	request, err := http.NewRequest("GET", "http://"+peer+"/_ping?method="+method+"&url="+url, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -136,7 +136,8 @@ func LeaderCheck(ra *Raft, check *Check) error {
 	for _, peer := range ra.PeersAPI() {
 		ppr, err := PerformAPICheck(peer, check.Method, check.URL)
 		if err != nil {
-			return err
+			log.Printf("WARNING: failed to ask confirmation from remote peer %v: %v", peer, err)
+			continue
 		}
 		if ppr.Up {
 			log.Printf("WARNING: leader flagged the check as \"down\", but others peers found it \"up\": %+v", pr)
