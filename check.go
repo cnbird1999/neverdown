@@ -125,7 +125,12 @@ func LeaderCheck(ra *Raft, check *Check) error {
 	if err != nil {
 		return err
 	}
+	now := time.Now().UTC().Unix()
 	log.Printf("Check result: %+v", pr)
+	if check.FirstCheck == 0 {
+		check.FirstCheck = check.Next.Unix()
+	}
+	check.Pings++
 	if pr.Up {
 		check.Up = true
 		return nil
@@ -145,8 +150,12 @@ func LeaderCheck(ra *Raft, check *Check) error {
 		}
 		prs = append(prs, ppr)
 	}
+	if check.Up == true {
+		check.Outages++
+	}
+	check.TimeDown += int64(check.Interval)
 	check.Up = false
-	check.LastDown = time.Now().UTC().Unix()
+	check.LastDown = now
 	check.LastError = pr.Error
 	// POST request with list of ping reponse
 	return nil

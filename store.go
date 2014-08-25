@@ -116,15 +116,21 @@ func (s *Store) ExecCommand(data []byte) error {
 
 // Check represent an active monitoring check
 type Check struct {
-	ID        string      `json:"id"`
-	URL       string      `json:"url"`
-	Method    string      `json:"method"`
-	LastCheck int64       `json:"last_check"`
-	LastError interface{} `json:"last_error"`
-	Up        bool        `json:"up"`
-	LastDown  int64       `json:"last_down"`
-	Interval  int         `json:"interval"`
-	WebHooks  []string    `json:"webhooks"`
+	ID         string      `json:"id"`
+	URL        string      `json:"url"`
+	Method     string      `json:"method"`
+	FirstCheck int64       `json:"first_check"`
+	LastCheck  int64       `json:"last_check"`
+	LastError  interface{} `json:"last_error"`
+	Up         bool        `json:"up"`
+	LastDown   int64       `json:"last_down"`
+	Interval   int         `json:"interval"`
+	WebHooks   []string    `json:"webhooks"`
+	Pings      int         `json:"pings"`
+	Outages    int         `json:"outages"`
+	Uptime     float32     `json:"uptime"`
+	TimeUp     int64       `json:"time_up"`
+	TimeDown   int64       `json:"time_down"`
 
 	Prev time.Time `json:"-"`
 	Next time.Time `json:"-"`
@@ -137,6 +143,7 @@ func NewCheck() *Check {
 		Next:     time.Time{},
 		WebHooks: []string{},
 		Method:   "HEAD",
+		Uptime:   100.0,
 		Interval: 60, // 60 seconds resolution between checks if no interval is provided.
 		Up:       true,
 	}

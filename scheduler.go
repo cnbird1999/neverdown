@@ -83,6 +83,12 @@ func (d *Scheduler) Run() {
 					if !check.Next.IsZero() {
 						check.LastCheck = check.Next.Unix()
 					}
+					// Re-compute the uptime percentage
+					if check.TimeDown > 0 {
+						total := check.Interval * check.Pings
+						check.Uptime = float32(int64(total)-check.TimeDown) / float32(total)
+						log.Printf("uptime:%+v", check)
+					}
 					if check.Up != oldStatus {
 						log.Printf("Check %v status changed from %v to %v", check.ID, oldStatus, check.Up)
 						if err := ExecuteWebhooks(d.raft, d.webhookSched, check); err != nil {
