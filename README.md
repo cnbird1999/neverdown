@@ -27,23 +27,27 @@ List all checks.
 $ curl http://localhost:7990/check
 {
     "checks": [
-        {
-            "id": "trucsdedev",
-            "url": "http://trucsdedev.com",
-            "method": "HEAD",
-            "last_check": 1407236438,
+	{
+            "first_check": 1408978031, 
+            "id": "trucsdedev", 
+            "interval": 60, 
+            "last_check": 1408978091, 
+            "last_down": 1408978037, 
             "last_error": {
-                "error": "no such host",
-                "status_code": 0,
+                "error": "no such host", 
+                "status_code": 0, 
                 "type": "dns"
-            },
-            "up": false,
-            "last_down": 1407236378,
-            "interval": 60,
-            "webhooks": [
-                "http://trucsdedev.com"
-            ]
-        }
+            }, 
+            "method": "HEAD", 
+            "outages": 1, 
+            "pings": 2, 
+            "time_down": 120, 
+            "time_up": 0, 
+            "up": false, 
+            "uptime": 0, 
+            "url": "http://trucsdedev.com", 
+            "webhooks": []
+        },
     ]
 }
 ```
@@ -69,21 +73,25 @@ Retrieve a single check by id.
 ```console
 $ curl http://localhost:7990/check/trucsdedev
 {
-    "id": "trucsdedev",
-    "url": "http://trucsdedev.com",
-    "method": "HEAD",
-    "last_check": 1407236438,
+    "first_check": 1408978031, 
+    "id": "trucsdedev", 
+    "interval": 60, 
+    "last_check": 1408978091, 
+    "last_down": 1408978037, 
     "last_error": {
-        "error": "no such host",
-        "status_code": 0,
-        "type": "dns"
-    },
-    "up": false,
-    "last_down": 1407236378,
-    "interval": 60,
-    "webhooks": [
-        "http://trucsdedev.com"
-    ]
+	"error": "no such host", 
+	"status_code": 0, 
+	"type": "dns"
+    }, 
+    "method": "HEAD", 
+    "outages": 1, 
+    "pings": 2, 
+    "time_down": 120, 
+    "time_up": 0, 
+    "up": false, 
+    "uptime": 0, 
+    "url": "http://trucsdedev.com", 
+    "webhooks": []
 }
 ```
 
