@@ -91,6 +91,9 @@ func (d *Scheduler) Run() {
 					}
 					if check.Up != oldStatus {
 						log.Printf("Check %v status changed from %v to %v", check.ID, oldStatus, check.Up)
+						if err := NotifyEmails(check); err != nil {
+							panic(err)
+						}
 						if err := ExecuteWebhooks(d.raft, d.webhookSched, check); err != nil {
 							panic(err)
 						}

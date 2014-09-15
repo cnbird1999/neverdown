@@ -126,10 +126,10 @@ type Check struct {
 	LastDown   int64       `json:"last_down"`
 	Interval   int         `json:"interval"`
 	WebHooks   []string    `json:"webhooks"`
+	Emails     []string    `json:"emails"`
 	Pings      int         `json:"pings"`
 	Outages    int         `json:"outages"`
 	Uptime     float32     `json:"uptime"`
-	TimeUp     int64       `json:"time_up"`
 	TimeDown   int64       `json:"time_down"`
 
 	Prev time.Time `json:"-"`
@@ -142,6 +142,7 @@ func NewCheck() *Check {
 		Prev:     time.Time{},
 		Next:     time.Time{},
 		WebHooks: []string{},
+		Emails:   []string{},
 		Method:   "HEAD",
 		Uptime:   100.0,
 		Interval: 60, // 60 seconds resolution between checks if no interval is provided.

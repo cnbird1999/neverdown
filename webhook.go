@@ -14,7 +14,7 @@ import (
 var WebHookMaxRetry = 20
 
 // ExecuteWebhooks try to execute all webhooks for a given check,
-// if a webhook fail, it will be addedt to the pending webhook and will
+// if a webhook fail, it will be added to the pending webhook and will
 // be managed by the WebHookScheduler.
 func ExecuteWebhooks(ra *Raft, whSched *WebHookScheduler, check *Check) error {
 	log.Println("executing WebHooks for check %v", check.ID)
@@ -136,16 +136,15 @@ func (d *WebHookScheduler) Run() {
 				}
 				log.Printf("Retrying webhook %v/%v (tries:%v)", wh.ID, wh.URL, wh.Tries)
 				err := ExecuteWebhook(d.raft, wh.Payload, wh.URL)
-				if err != nil || wh.Tries == WebHookMaxRetry {
+				if err != nil {
 					wh.Tries++
 					if err := d.raft.ExecCommand(wh.ToPostCmd()); err != nil {
 						panic(err)
 					}
 					wh.ComputeNext(now)
-				} else {
-					if wh.Tries == WebHookMaxRetry {
-						log.Printf("WARNING: the WebHook %+v will be deleted, after %v failed retries", wh, WebHookMaxRetry)
-					}
+				}
+				if wh.Tries == WebHookMaxRetry {
+					log.Printf("WARNING: the WebHook %+v will be deleted, after %v failed retries", wh, WebHookMaxRetry)
 					// WebHook sucessfully updated
 					if err := d.raft.ExecCommand(wh.ToDeleteCmd()); err != nil {
 						panic(err)

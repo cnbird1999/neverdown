@@ -34,8 +34,6 @@ type FSM struct {
 }
 
 func (fsm *FSM) Apply(l *raft.Log) interface{} {
-	//log.Printf("Got log %+v", l)
-	//log.Printf("%v", string(l.Data))
 	return fsm.store.ExecCommand(l.Data)
 }
 
