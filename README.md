@@ -66,7 +66,7 @@ You can specify an custom **id**, if no id is specified, a random UUID will be g
 The default **interval** is 60 seconds.
 
 ```console
-$ curl -XPOST http://localhost:7990/check -d '{"id": "trucsdedev", "interval": 60, "url": "http://trucsdedev.com", "webhooks":["http://requestb.in/18myl7y1"]}'
+$ curl -XPOST http://localhost:7990/check -d '{"id": "trucsdedev", "interval": 60, "url": "http://trucsdedev.com", "emails":["thomas.sileo@gmail.com"], "webhooks":["http://requestb.in/18myl7y1"]}'
 ```
 
 ### GET /check/{id}

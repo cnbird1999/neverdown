@@ -1,12 +1,14 @@
 package neverdown
 
 import (
+	"encoding/json"
 	"log"
 	"sort"
+	"sync"
 	"time"
 )
 
-// Scheduler schedule checks, it also manage the WebHookScheduler.
+// Scheduler schedules checks, it also manage the WebHookScheduler.
 type Scheduler struct {
 	raft         *Raft
 	webhookSched *WebHookScheduler
@@ -16,7 +18,7 @@ type Scheduler struct {
 	checks       []*Check
 }
 
-// NewScheduler initialize a new empty Scheduler.
+// NewScheduler initializes a new empty Scheduler.
 func NewScheduler(raft *Raft, webhookSched *WebHookScheduler) *Scheduler {
 	return &Scheduler{
 		raft:         raft,
@@ -26,7 +28,7 @@ func NewScheduler(raft *Raft, webhookSched *WebHookScheduler) *Scheduler {
 	}
 }
 
-// Stop shutdown the Scheduler cleanly.
+// Stop shutdowns the Scheduler cleanly.
 func (d *Scheduler) Stop() {
 	log.Println("Stoppping scheduler...")
 	d.webhookSched.Stop()
@@ -47,7 +49,7 @@ func (d *Scheduler) updateChecks() error {
 	return nil
 }
 
-// Run start the processing of jobs, and listen for config update.
+// Run starts the processing of jobs, and listens for config update.
 func (d *Scheduler) Run() {
 	go d.webhookSched.Run()
 	log.Println("Starting scheduler...")
@@ -91,12 +93,34 @@ func (d *Scheduler) Run() {
 					}
 					if check.Up != oldStatus {
 						log.Printf("Check %v status changed from %v to %v", check.ID, oldStatus, check.Up)
-						if err := NotifyEmails(check); err != nil {
-							panic(err)
-						}
-						if err := ExecuteWebhooks(d.raft, d.webhookSched, check); err != nil {
-							panic(err)
-						}
+						var wg sync.WaitGroup
+						wg.Add(3)
+						go func(check *Check) {
+							defer wg.Done()
+							if d.raft.Producer == nil {
+								return
+							}
+							js, err := json.Marshal(check)
+							if err != nil {
+								panic(err)
+							}
+							if err := d.raft.Producer.Publish("neverdown", js); err != nil {
+								panic(err)
+							}
+						}(check)
+						go func(check *Check) {
+							defer wg.Done()
+							if err := NotifyEmails(check); err != nil {
+								panic(err)
+							}
+						}(check)
+						go func(check *Check) {
+							defer wg.Done()
+							if err := ExecuteWebhooks(d.raft, d.webhookSched, check); err != nil {
+								panic(err)
+							}
+						}(check)
+						wg.Wait()
 					}
 					if err := d.raft.ExecCommand(check.ToPostCmd()); err != nil {
 						panic(err)

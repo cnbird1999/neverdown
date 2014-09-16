@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"sort"
+	"sync"
 	"time"
 )
 
@@ -18,13 +19,16 @@ var WebHookMaxRetry = 20
 // be managed by the WebHookScheduler.
 func ExecuteWebhooks(ra *Raft, whSched *WebHookScheduler, check *Check) error {
 	log.Println("executing WebHooks for check %v", check.ID)
-	errc := make(chan error)
+	errc := make(chan error, len(check.WebHooks))
 	payload, err := json.Marshal(check)
 	if err != nil {
 		return err
 	}
+	var wg sync.WaitGroup
 	for _, url := range check.WebHooks {
+		wg.Add(1)
 		go func() {
+			defer wg.Done()
 			if err := ExecuteWebhook(ra, payload, url); err != nil {
 				log.Printf("Failed to execute webhook %v for check %v: %v", url, check.ID, err)
 				wh := &WebHook{
@@ -42,6 +46,8 @@ func ExecuteWebhooks(ra *Raft, whSched *WebHookScheduler, check *Check) error {
 			}
 		}()
 	}
+	wg.Wait()
+	close(errc)
 	for err := range errc {
 		if err != nil {
 			return err

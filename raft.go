@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/bitly/go-nsq"
 	"github.com/hashicorp/raft"
 	"github.com/hashicorp/raft-mdb"
 )
@@ -82,12 +83,20 @@ type Raft struct {
 	raft      *raft.Raft
 	peerStore *raft.JSONPeers
 	fsm       *FSM
+	Producer  *nsq.Producer
 	//leader bool
 }
 
 // NewRaft initialize raft.
 func NewRaft(prefix, addr string, peers []string) (r *Raft, err error) {
 	r = new(Raft)
+
+	rconfig := nsq.NewConfig()
+	w, err := nsq.NewProducer("127.0.0.1:4150", rconfig)
+	if err != nil {
+		panic(err)
+	}
+	r.Producer = w
 
 	config := raft.DefaultConfig()
 	config.EnableSingleNode = true
