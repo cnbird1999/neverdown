@@ -233,7 +233,7 @@ You can also get it on via the [Docker Hub](https://registry.hub.docker.com/u/ne
 
 ```console
 $ sudo docker pull neverdown/neverdown
-$ sudo docker run -p 8001:8000 -p 7990:7990 -e UPCHECK_PEERS=:8000,:8001 -t neverdown/neverdown
+$ sudo docker run -p 8001:8000 -p 7990:7990 -e NEVERDOWN_PEERS=:8000,:8001 -t neverdown/neverdown
 ```
 ## Security
 
@@ -250,7 +250,7 @@ $ autossh -f -NL 8001:127.0.0.1:8001 user@remote_host
 Configuration is handled by environment variable.
 
 ```console
-$ UPCHECK_ADDR=:8000 UPCHECK_PREFIX=ok UPCHECK_PEERS=:8000,:8001,:8002 ./neverdown
+$ NEVERDOWN_ADDR=:8000 NEVERDOWN_PREFIX=ok NEVERDOWN_PEERS=:8000,:8001,:8002 ./neverdown
 ```
 
 ## TODO
