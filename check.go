@@ -56,8 +56,9 @@ func PerformCheck(method, url string) (*PingResponse, error) {
 					pr.Error.Error = errs[len(errs)-1]
 				default:
 					LogUnknownError("2", cerr, nerr)
-					pr.Error.Type = "unknown"
-					pr.Error.Error = err.Error()
+					errs := strings.Split(cerr.Error(), ": ")
+					pr.Error.Error = errs[len(errs)-1]
+					pr.Error.Type = "server"
 				}
 			default:
 				switch nerr.Err.Error() {
@@ -87,7 +88,7 @@ func PerformCheck(method, url string) (*PingResponse, error) {
 		if err != nil {
 			return pr, nil
 		}
-		pr.Error.Type = "server"
+		pr.Error.Type = "response"
 		pr.Error.Error = string(body)
 	}
 	return pr, nil
