@@ -6,7 +6,7 @@ Distributed website monitoring system that triggers WebHooks when a website stat
 
 - A simple HTTP JSON API, no UI.
 - Distributed using [raft](https://github.com/hashicorp/raft) (a 3 nodes cluster can tolerate one failure).
-- Trigger WebHooks when a website status change (down->up/up->down), if a WebHook is not received, it will be retried up to 20 times (with exponential backoff).
+- Trigger WebHooks (and/or send alert email) when a website status change (down->up/up->down), if a WebHook is not received, it will be retried up to 20 times (with exponential backoff).
 
 ## API endpoints
 
@@ -28,6 +28,9 @@ $ curl http://localhost:7990/check
 {
     "checks": [
 	{
+            "emails": [
+                "thomas.sileo@gmail.com"
+            ],
             "first_check": 1408978031, 
             "id": "trucsdedev", 
             "interval": 60, 
@@ -73,6 +76,9 @@ Retrieve a single check by id.
 ```console
 $ curl http://localhost:7990/check/trucsdedev
 {
+    "emails": [
+        "thomas.sileo@gmail.com"
+    ],
     "first_check": 1408978031, 
     "id": "trucsdedev", 
     "interval": 60, 
@@ -194,6 +200,9 @@ if a webhook is not received, it will be retried up to 20 times (with exponentia
 
 ```json
 {
+    "emails": [
+        "thomas.sileo@gmail.com"
+    ],
     "id": "trucsdedev",
     "url": "http://trucsdedev.com",
     "method": "HEAD",
@@ -216,7 +225,8 @@ if a webhook is not received, it will be retried up to 20 times (with exponentia
 
 - **timeout**: the 10 seconds timeout has been exceeded while loading the page.
 - **dns**: there is a DNS issue.
-- **server**: server issue, refers to the status code and the error returned by the server.
+- **server**: server issue (like connection refused). 
+- **response**: response issue, refers to the status code and the response returned by the server.
 - **unknown**: unknown or not handled yet issue.
 
 ## Docker
